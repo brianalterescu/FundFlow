@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"> <!-- Encoding Characters -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fund Flow</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/digitallytailored/classless@latest/classless.min.css">
+    <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
+    <link rel="stylesheet" href='css/index.css'>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
+        rel="stylesheet">
+
+</head>
+
+<body style="flex-wrap: wrap;">
+
+    <div class="topnav" style="border-radius: 25px; margin: 0 auto;">
+        <a class="active" href="#home" style="padding-top: 25px">Fund Flow</a>
+        <a href="./html/features.html" style="padding-top: 25px">Features</a>
+        <a href="./html/learn.html" style="padding-top: 25px">Learn</a>
+        <a href='./html/login.html' style="align-items: right;"><button style="align-items: right;">Log In</button></a>
+        <a href='./html/signup.html'><button style="alight-items: right; display: flex; justify-content: right;">Get Started</button></a>
+    </div>
+
+
+    <h1>Fund Flow</h1>
+    <h3>All-in-One Social Finance Tracker</h3>
+<img src="https://placehold.co/600x400">
+
+</body>
+
+<footer style="margin-top: 100px;">
+    <p>This is a Senior Capstone Project for Farmingdale State College.</p>
+    <p>Created by Brian Alterescu, Antonious Yakoub, Christopher Brady, Marlen Zavala-Maldonado, and Katherine Acosta.
+    </p>
+</footer>
+
+
+<!-- Google Sign in Button -->
+<script>
+    function onSuccess(googleUser) {
+        console.log('Logged in as: ' + googleUser.getBasicProfile().getName());
+    }
+
+    function onFailure(error) {
+        console.log(error);
+    }
+
+    function renderButton() {
+        gapi.signin2.render('my-signin2', {
+            'scope': 'profile email',
+            'width': 240,
+            'height': 50,
+            'longtitle': true,
+            'theme': 'dark',
+            'onsuccess': onSuccess,
+            'onfailure': onFailure
+        });
+    }
+</script>
+
+</html>

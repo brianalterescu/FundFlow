@@ -1,0 +1,52 @@
+<html>
+
+<head>
+  <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/digitallytailored/classless@latest/classless.min.css">
+</head>
+
+<body style="align-items: center;">
+  <div id="my-signin2"></div>
+  <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+
+  <form action="login.php" method="post" style="align-content: center;">
+    <h1 style="text-align: center;">Log In</h1>
+    <p style="text-align: center;">Please fill in this form to log in to your Fund Flow account.</p>
+
+    <div id="my-signin2"></div>
+    <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
+
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
+
+    <label style="text-align:center; align-items: center;">
+      <input style="align-items: center;" type="checkbox" checked="checked" name="remember"> Remember me
+    </label>
+
+    <br>
+    <div style="text-align: center;">
+      <button type="submit" style="margin: 0 auto;">Login</button>
+
+    </div>
+   
+    <br>
+    <p style='text-align: center;' class="psw">Forgot <a href="#">password?</a></p>
+
+
+    <!-- <div class="container" style="background-color:#f1f1f1"> -->
+
+
+    </div>
+
+    <h4 style="text-align: center;">Or Login Using</h4>
+    <div style='padding-top: 1rem; justify-content: center; display: flex;' class="g-signin2">
+      <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+    </div>
+
+  </form>
+</body>
+
+</html>
