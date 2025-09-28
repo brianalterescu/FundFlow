@@ -45,12 +45,20 @@
     </form>
 
     <h4 style="text-align: center;">Or Sign Up Using</h4>
-    <div style='padding-top: 1rem; justify-content: center; display: flex;' class="g-signin2">
-      <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async></script>
+    <div id="g_id_onload"
+        data-client_id="555492753051-hpsiifnjv5rfubtkhvcq71kpuk0en8hg.apps.googleusercontent.com"
+        data-login_url="fund-flow-fsc.vercel.app"
+        data-auto_prompt="true">
     </div>
-
-    <div id="my-signin2"></div>
-    <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+    <div class="g_id_signin"
+        data-type="standard"
+        data-size="large"
+        data-theme="outline"
+        data-text="sign_in_with"
+        data-shape="rectangular"
+        data-logo_alignment="left">
+    </div>
 </body>
 
 </html>

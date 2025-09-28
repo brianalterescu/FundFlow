@@ -1,8 +1,9 @@
 <html>
 
 <head>
-  <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
+  <meta name="google-signin-client_id" content="fund-flow-fsc.apps.googleusercontent.com">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/digitallytailored/classless@latest/classless.min.css">
+  <script src="https://apis.google.com/js/platform.js" async defer></script>
 </head>
 
 <body style="align-items: center;">
@@ -13,8 +14,6 @@
     <h1 style="text-align: center;">Log In</h1>
     <p style="text-align: center;">Please fill in this form to log in to your Fund Flow account.</p>
 
-    <div id="my-signin2"></div>
-    <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
 
     <label for="uname"><b>Username</b></label>
     <input type="text" placeholder="Enter Username" name="uname" required>
@@ -42,10 +41,23 @@
     </div>
 
     <h4 style="text-align: center;">Or Login Using</h4>
-    <div style='padding-top: 1rem; justify-content: center; display: flex;' class="g-signin2">
+    <!-- <div style='padding-top: 1rem; justify-content: center; display: flex;' class="g-signin2">
       <script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+    </div> -->
+    <script src="https://accounts.google.com/gsi/client" async></script>
+    <div id="g_id_onload"
+        data-client_id="555492753051-hpsiifnjv5rfubtkhvcq71kpuk0en8hg.apps.googleusercontent.com"
+        data-login_url="fund-flow-fsc.vercel.app"
+        data-auto_prompt="false">
     </div>
-
+    <div class="g_id_signin"
+        data-type="standard"
+        data-size="large"
+        data-theme="outline"
+        data-text="sign_in_with"
+        data-shape="rectangular"
+        data-logo_alignment="left">
+    </div>
   </form>
 </body>
 
