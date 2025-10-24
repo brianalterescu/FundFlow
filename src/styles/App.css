@@ -1,0 +1,41 @@
+body, html {
+    margin: 0;
+    font-family: 'Inter', 'Poppins', sans-serif;
+    background: #111827;
+    color: #f9fafb;
+  }
+  
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 60px;
+    background: #1f2937;
+  }
+  
+  .nav-links a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #f9fafb;
+  }
+  
+  .hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 80px 60px;
+    max-width: 1200px;
+    margin: auto;
+  }
+  
+  .hero-text h1 {
+    font-size: 3rem;
+    line-height: 1.2;
+    color: #f9fafb;
+  }
+  
+  .hero-text .accent {
+    color: #06d6a1;
+  }
+  

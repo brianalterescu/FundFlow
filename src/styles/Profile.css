@@ -1,0 +1,305 @@
+body, .page {
+  margin: 0;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  background: #111827;
+  color: #f9fafb;
+}
+
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 60px;
+  background: #1f2937;
+  border-bottom: 1px solid #1f2937;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #06d6a1;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.nav-btn {
+  color: #f9fafb;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-btn:hover {
+  color: #06d6a1;
+}
+
+.logout-small {
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid #f9fafb;
+  color: #f9fafb;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-small:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Main Card Container */
+.profile-card {
+  background: #1f2937;
+  border-radius: 20px;
+  padding: 60px;
+  max-width: 1200px;
+  width: 90%;
+  margin: 60px auto;
+  box-shadow: 0 10px 30px rgba(6, 214, 161, 0.2);
+}
+
+:root { --header-height: 80px; }
+
+.header {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  color: #06d6a1;
+}
+
+.header-spacer {
+  height: calc(var(--header-height) + 5px); 
+}
+
+.subtext {
+  color: #d1d5db;
+  margin-bottom: 0.5rem;
+}
+
+.uid {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+/* Sections */
+.section {
+  margin-top: 2rem;
+}
+
+.section-header {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #06d6a1;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  margin-bottom: 1rem;
+  background-color: #111827;
+  color: #f9fafb;
+  font-size: 1rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #06d6a1;
+  box-shadow: 0 0 5px rgba(6, 214, 161, 0.5);
+}
+
+.primary-btn {
+  padding: 12px 22px;
+  border-radius: 10px;
+  background: #06d6a1;
+  border: none;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: #05c395;
+  box-shadow: 0 6px 15px rgba(6, 214, 161, 0.3);
+}
+
+.secondary-btn {
+  padding: 12px 22px;
+  border-radius: 10px;
+  background: #06d6a1;
+  border: none;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: #05c395;
+  box-shadow: 0 6px 15px rgba(6, 214, 161, 0.3);
+}
+
+/* Chart + Transaction Section */
+.tx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 1.5rem;
+}
+
+.tx-card {
+  background: #111827;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(6, 214, 161, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.tx-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(6, 214, 161, 0.3);
+}
+
+.tx-card h3 {
+  color: #06d6a1;
+  margin-bottom: 8px;
+}
+
+.tx-card p {
+  color: #d1d5db;
+  margin: 4px 0;
+}
+
+.tx-date {
+  display: block;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 6px;
+}
+
+/* Summary Box */
+.summary-box {
+  margin-top: 2rem;
+  background: #1f2937;
+  padding: 20px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(6, 214, 161, 0.2);
+}
+
+.empty-text {
+  color: #9ca3af;
+  text-align: center;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+/* Toggle Switch */
+.toggle-switch-wrapper {
+margin-bottom: 1rem;
+display: flex;
+justify-content: center;
+}
+
+.toggle-switch {
+position: relative;
+display: flex;
+width: 120px;
+height: 50px;
+background-color: #111827;
+border: 2px solid #374151;
+border-radius: 30px;
+overflow: hidden;
+box-shadow: 0 4px 10px rgba(6, 214, 161, 0.1);
+}
+
+.toggle-option {
+flex: 1;
+z-index: 2;
+font-size: 1.5rem;
+font-weight: bold;
+color: #9ca3af;
+background: none;
+border: none;
+cursor: pointer;
+transition: color 0.2s ease;
+}
+
+.toggle-option.plus:hover {
+color: #00e0a1;
+}
+
+.toggle-option.minus:hover {
+color: #ef4444;
+}
+
+.slider {
+position: absolute;
+top: 2px;
+bottom: 2px;
+left: 2px;
+width: 50%;
+background-color: #00e0a1;
+border-radius: 30px;
+transition: transform 0.3s ease;
+z-index: 1;
+}
+
+.toggle-switch.expense .slider {
+transform: translateX(100%);
+background-color: #ef4444;
+}
+
+.toggle-switch.income .slider {
+transform: translateX(0%);
+background-color: #00e0a1;
+}
+
+/*Transaction card delete buttons*/
+.tx-card {
+position: relative;
+}
+
+.delete-btn {
+position: absolute;
+top: 10px;
+right: 10px;
+background: transparent;
+border: none;
+color: #9ca3af;
+font-size: 1.2rem;
+cursor: pointer;
+opacity: 0;
+transition: opacity 0.2s ease;
+}
+
+.tx-card:hover .delete-btn {
+opacity: 1;
+}
+
+.delete-btn:hover {
+color: #ef4444;
+}
+
+.profile-avatar {
+width: 150px;          
+height: 150px;    
+min-width: 150px;
+min-height: 150px;     
+object-fit: cover;     
+border-radius: 50%;    
+border: 2px solid #00E0A1;
+box-shadow: 0 0 10px rgba(0, 224, 161, 0.2);
+margin-bottom: 0.75rem;
+}
+
