@@ -1,0 +1,181 @@
+body,
+.view-profile-page {
+  margin: 0;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  background: #111827;
+  color: #f9fafb;
+}
+
+.view-profile-page {
+   margin-top: 2rem;
+}
+
+/* Header bar (optional if shared across pages) */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 60px;
+  background: #1f2937;
+  border-bottom: 1px solid #1f2937;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #06d6a1;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-family: "Lexend Deca", sans-serif;
+}
+
+/* .nav-btn {
+  color: #f9fafb;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-btn:hover {
+  color: #06d6a1;
+} */
+
+/* Main card container */
+.view-profile-card {
+  background: #1f2937;
+  border-radius: 20px;
+  padding: 60px;
+  max-width: 900px;
+  width: 90%;
+  margin: 60px auto;
+  margin-top: 15rem;
+  box-shadow: 0 10px 30px rgba(6, 214, 161, 0.2);
+  text-align: center;
+}
+
+.view-header {
+  font-size: 2rem;
+  color: #06d6a1;
+  margin-bottom: 0.5rem;
+}
+
+.view-subtext {
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.view-email {
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+/* User avatar (if applicable) */
+.user-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 15px rgba(6, 214, 161, 0.25);
+}
+
+/* Follow / Block Buttons */
+.block-btn,
+.unblock-btn,
+.follow-btn,
+.unfollow-btn {
+  margin-top: 1rem;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.block-btn,
+.follow-btn {
+  background: #ef4444;
+  color: #fff;
+  margin-left: 1.5rem;
+}
+
+.block-btn:hover,
+.follow-btn:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 15px rgba(239, 68, 68, 0.3);
+}
+
+.unblock-btn,
+.unfollow-btn {
+  background: transparent;
+  border: 1px solid #9ca3af;
+  color: #9ca3af;
+}
+
+.unblock-btn:hover,
+.unfollow-btn:hover {
+  background: #374151;
+  border-color: #06d6a1;
+  color: #06d6a1;
+}
+
+.follow-btn {
+  background: #06d6a1;
+  color: #111;
+}
+
+.follow-btn:hover {
+  background: #05c395;
+  box-shadow: 0 6px 15px rgba(6, 214, 161, 0.3);
+}
+
+/* Blocked view message */
+.blocked-container {
+  background: #1f2937;
+  border-radius: 20px;
+  padding: 80px 40px;
+  max-width: 600px;
+  width: 90%;
+  margin: 100px auto;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+}
+
+.blocked-container p {
+  font-size: 1.2rem;
+  color: #d1d5db;
+}
+
+.blocked-container h2 {
+  color: #06d6a1;
+  margin-bottom: 1rem;
+}
+
+/* Utility spacing */
+.section {
+  margin-top: 2rem;
+}
+
+.empty-text {
+  color: #9ca3af;
+  text-align: center;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.user-picture {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #00E0A1;
+  box-shadow: 0 0 10px rgba(0, 224, 161, 0.2);
+  margin-bottom: 0.75rem;
+}

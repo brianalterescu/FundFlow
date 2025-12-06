@@ -1,0 +1,82 @@
+body {
+   font-family: "Lexend Deca", sans-serif;
+}
+.input {
+  font-family: "Lexand Deca", sans-serif;
+}
+
+.search-container {
+  width: 1200px;
+  margin: 40px auto;
+  margin-top: 10rem;
+  background: #1f2937;
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(6, 214, 161, 0.25);
+   font-family: "Lexend Deca", sans-serif;
+}
+
+.profile-search-header {
+  margin-bottom: 1rem;
+   font-family: "Lexend Deca", sans-serif;
+}
+.search-container input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+
+.search-container button {
+  padding: 10px 20px;
+  background-color: #06d6a1;
+  color: #111;
+    font-family: "Lexend Deca", sans-serif;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.results-list {
+  list-style: none;
+  margin-top: 1.5rem;
+  padding: 0;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2d3748;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.view-btn {
+  background-color: #06d6a1;
+  color: #111;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.header-spacer {
+  height: calc(var(--header-height) + 5px); 
+}

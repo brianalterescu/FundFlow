@@ -1,0 +1,128 @@
+.learn-container {
+  font-family: "Lexend Deca", sans-serif;
+  min-height: 100vh;
+  /* background-color: #1f2937; */
+  padding-top: 80px; /* prevent overlap with navbar */
+}
+
+.header-bar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  /* background-color: #1f2937; */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 2rem;
+  z-index: 100;
+}
+
+.header-bar .logo {
+  height: 50px;
+}
+
+.learn-nav-links .learn-nav-btn {
+  margin-left: 1rem;
+  padding: 0.5rem 1rem;
+  /* color: #fff; */
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  font-family: "Lexend Deca", sans-serif;
+}
+
+.nav-links .nav-btn:hover {
+  background-color: #06d6a0;
+  color: #000;
+}
+
+.learn-main {
+  max-width: 1000px;
+  margin: 3rem auto 6rem auto;
+  padding: 2rem;
+}
+
+.learn-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+ color:#06d6a1;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.learn-intro {
+  font-size: 1.2rem;
+  font-family: "Lexend Deca", sans-serif;
+  color: #fff;
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.learn-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.feature-card {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+
+.feature-card h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #111827;
+}
+
+.feature-card p {
+  color: #4b5563;
+  font-size: 1rem;
+}
+
+.learn-cta {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.learn-cta h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #06d6a1;
+}
+
+.cta-btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  background-color: #06d6a0;
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.cta-btn:hover {
+  background-color: #05b788;
+}
+.footer {
+  background-color: #1f2937;
+  color: #9ca3af;
+  text-align: center;
+  padding: 1.5rem 0;
+  position: relative;
+  bottom: 0;
+  width: 100%;
+}
