@@ -22,7 +22,7 @@ FundFlow is an All-in-One Social Finance Tracker that lets users track transacti
 - Edit transactions
 - Admin Panel that allows developers to change display names, profile pictures, delete posts, and accounts
 
-## Authors
+# Authors
 - [Brian Alterescu](https://www.github.com/brianalterescu)
 - [Antonious Yakoub](https://github.com/antyakoub)
 - [Christopher Brady](https://github.com/bradcd95)
