@@ -2,7 +2,8 @@
 import React, { createContext, useContext } from 'react';
 // Import the custom hook that handles notifications
 import { useNotifications } from '../hooks/useNotifications';
-
+import { collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+// import { db } from "../firebase"; // adjust path
 /*
   NotificationContext
 
@@ -83,4 +84,39 @@ export const withNotifications = (Component) => {
     const notifications = useNotificationContext(); // Get notification state
     return <Component {...props} notifications={notifications} />; // Inject as prop
   };
+};
+
+
+const clearAllNotifications = async () => {
+  try {
+    if (!currentUser?.uid) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("uid", "==", currentUser.uid)
+    );
+
+    const docs = await getDocs(q);
+
+    if (docs.empty) {
+      alert("No notifications to clear.");
+      return;
+    }
+
+    const batch = writeBatch(db);
+
+    docs.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+
+    await batch.commit();
+
+    // Optional: update local UI state
+    setNotifications([]); 
+
+    alert("All notifications cleared!");
+  } catch (error) {
+    console.error("Error clearing notifications:", error);
+    alert("Failed to clear notifications.");
+  }
 };

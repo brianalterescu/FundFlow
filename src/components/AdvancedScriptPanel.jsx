@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { collection, getDocs, updateDoc, doc, deleteField } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import "../styles/Admin.css";
+// import "../styles/Admin.css";
 
 function AdvancedScriptPanel() {
   const [collectionName, setCollectionName] = useState("");

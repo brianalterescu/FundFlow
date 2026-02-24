@@ -8,6 +8,8 @@ import {
     getDocs,
     updateDoc,
     deleteDoc,
+    addDoc,
+    serverTimestamp,
     query,
     where,
     doc,
@@ -15,7 +17,7 @@ import {
 import { db } from "../firebaseConfig";
 import { TransactionContext } from "../context/TransactionContext";  // Imports the TransactionContext for accessing user data.
 import AdvancedScriptPanel from "./AdvancedScriptPanel.jsx";
-import "../styles/Admin.css";
+// import "../styles/Admin.css";
 
 const ADMIN_UIDS = ["9OXXhoS6Z6PncAzGxkNsPtfOCzn1", "tqdq1SUmVSWhces8vJpKEEvMade2", "O3Hj6a37lSeMvGGsuVCbZpGWInx2", "e1SqnahuVCVtQqrYm6aF9hnkMnh1", "cwCQbRWiOVbt4SqAqGo3KwGC7yX2"]; // Add more later
 const DEFAULT_PIC =
@@ -42,7 +44,7 @@ function AdminPanel() {
     const [scriptOperation, setScriptOperation] = useState("add");
     const [scriptValue, setScriptValue] = useState("");
     const [scriptStatus, setScriptStatus] = useState("");
-
+    const [notificationMessage, setNotificationMessage] = useState("");
     const handleRunScript = async () => {
         if (!scriptCollection || !scriptField) return alert("Collection and Field are required");
         if (scriptOperation !== "delete" && !scriptValue) return alert("Value required for Add/Update");
@@ -177,164 +179,288 @@ function AdminPanel() {
         alert("User posts deleted!");
     };
 
-const handleDeleteUser = async () => {
-    if (!targetUser) return;
+    const createNotification = async (uid, message, link = "") => {
+        if (!message) {
+            alert("Please enter a message for the notification.");
+            return;
+        }
 
-    // Prevent deleting admin accounts
-    if (ADMIN_UIDS.includes(targetUser.uid)) {
-        alert("This account is protected and cannot be deleted.");
-        console.warn("Attempted to delete ADMIN account:", targetUser.uid);
-        return;
+        try {
+            await addDoc(collection(db, "Notifications"), {
+                uid: uid,
+                message: message,
+                link: link,
+                read: false,
+                createdAt: serverTimestamp(),
+            });
+
+            alert(`Notification sent to user ${uid}`);
+        } catch (err) {
+            console.error("Error creating notification:", err);
+            alert("Failed to create notification.");
+        }
+    };
+
+    const handleDeleteUser = async () => {
+        if (!targetUser) return;
+
+        // Prevent deleting admin accounts
+        if (ADMIN_UIDS.includes(targetUser.uid)) {
+            alert("This account is protected and cannot be deleted.");
+            console.warn("Attempted to delete ADMIN account:", targetUser.uid);
+            return;
+        }
+
+        if (!window.confirm(`Delete user ${targetUser.name} and all data?`)) return;
+
+        try {
+            await deleteDoc(doc(db, "users", targetUser.uid));
+            await handleDeleteUserPosts();
+
+            setTargetUser(null);
+            setSearchTerm("");
+            setSearchResults([]);
+
+            alert("User deleted!");
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            alert("Failed to delete user.");
+        }
+    };
+
+   const handleDeleteUserTransactions = async () => {
+  if (!targetUser || !targetUser.uid) {
+    alert("Please select a user first.");
+    return;
+  }
+
+  // Safety: prevent deleting transactions for admin accounts
+//   if (ADMIN_UIDS.includes(targetUser.uid)) {
+//     alert("Cannot delete transactions for an admin account.");
+//     return;
+//   }
+
+  if (
+    !window.confirm(
+      `Are you sure you want to delete ALL transactions for ${targetUser.name || targetUser.email}? This cannot be undone.`
+    )
+  )
+    return;
+
+  try {
+    // Query transactions where the field matches your transactions schema (your app uses "userid")
+    const txRef = collection(db, "transactions");
+    const q = query(txRef, where("userid", "==", targetUser.uid));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      alert("This user has no transactions.");
+      return;
     }
 
-    if (!window.confirm(`Delete user ${targetUser.name} and all data?`)) return;
+    // Delete all matching docs in parallel
+    const deletes = snap.docs.map((d) => deleteDoc(doc(db, "transactions", d.id)));
+    await Promise.all(deletes);
 
-    try {
-        await deleteDoc(doc(db, "users", targetUser.uid));
-        await handleDeleteUserPosts();
+    alert(`Deleted ${deletes.length} transactions for ${targetUser.name || targetUser.email}.`);
 
-        setTargetUser(null);
-        setSearchTerm("");
-        setSearchResults([]);
-
-        alert("User deleted!");
-    } catch (error) {
-        console.error("Error deleting user:", error);
-        alert("Failed to delete user.");
-    }
+    // Optional: If you keep a list of users or need to refresh UI, do that here
+    // e.g. refresh the search results or selected user info
+  } catch (err) {
+    console.error("Error deleting user transactions:", err);
+    alert("Failed to delete transactions. Check console for details.");
+  }
 };
+
 
 
     if (loading) return <div>Loading...</div>;
     if (!accessGranted) return <div>Access Denied.</div>;
 
-    return (
-        <div className="admin-container">
-            {/* Navbar */}
-{/* Standard navigation to access other JSX files */}
-            <header className="header-bar">
-                <Link to="/dashboard">
-                    <img src="./FundFlowLogo2.png" alt="Fund Flow Logo" className="logo" />
-                </Link>
-                <nav className="nav-links">
-                    <Link to="/" className="nav-links">
-                        Home
-                    </Link>
-                    <Link to="/dashboard" className="nav-links">
-                        Dashboard
-                    </Link>
-                    <a href="/connections">Connections</a>
-                </nav>
-            </header>
+    return (<div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col">
+      {/* Desktop Top Navbar */}
+      <header className="hidden md:flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow">
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <img src="./FundFlow-Favicon.png" alt="Fund Flow Logo" className="h-10 w-10" />
+          <span className="font-bold text-2xl">
+            <span className="text-[#07d6a1]">Fund</span>
+            <span className="text-gray-900 dark:text-white">Flow</span>
+          </span>
+        </Link>
+        <nav className="flex space-x-4">
+          <Link to="/dashboard" className="px-3 py-2 rounded hover:bg-[#07d6a1]/20 transition">Dashboard</Link>
+          <Link to="/connections" className="px-3 py-2 rounded hover:bg-[#07d6a1]/20 transition">Connections</Link>
+          <Link to="/connections" className="px-3 py-2 rounded hover:bg-[#07d6a1]/20 transition">Social</Link>
+          <Link to="/searchUsers" className="px-3 py-2 rounded hover:bg-[#07d6a1]/20 transition">Search Users</Link>
+        </nav>
+      </header>
 
-            <div className="admin-main">
-                <h2 style={{color:' #fff'}}>Admin User Management</h2>
+      {/* Mobile Bottom Navbar */}
+      <nav className="fixed bottom-0 left-0 right-0 md:hidden flex justify-around bg-white dark:bg-gray-800 p-2 shadow-t">
+        <Link to="/dashboard" className="text-center text-sm">🏠<br/>Dashboard</Link>
+        <Link to="/connections" className="text-center text-sm">🔗<br/>Connections</Link>
+        <Link to="/connections" className="text-center text-sm">💬<br/>Social</Link>
+        <Link to="/searchUsers" className="text-center text-sm">🔍<br/>Search</Link>
+      </nav>
 
-                {/* ------------------ */}
-                {/* Search Users */}
-                {/* ------------------ */}
-                <form onSubmit={handleSearch}>
-                    <input
-                        type="text"
-                        placeholder="Enter email or UID"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSearch(e);
-                        }}
-                    />
-                    <button type="submit" className="admin-main-btn" disabled={searchLoading}>
-                        {searchLoading ? "Searching..." : "Search"}
-                    </button>
-                </form>
-                {searchError && <p className="error">{searchError}</p>}
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-6 pt-6 md:pt-8">
+        <h2 className="text-2xl font-bold mb-4">Admin User Management</h2>
 
-                <ul className="admin-search-results">
-                    {searchResults.map((u) => (
-                        <li key={u.uid} className="admin-user-item">
-                            <div className="user-info">
-                                <img
-                                    src={u.picURL || DEFAULT_PIC}
-                                    alt={u.name || u.email}
-                                    className="avatar"
-                                />
-                                <div>
-                                    <p>
-                                        <strong className="admin-userInfo">{u.name || "Unnamed User"}</strong>
-                                    </p>
-                                    <p className="admin-userInfo">{u.email}</p>
-                                    <p className="admin-userInfo">UID: {u.uid}</p>
-                                </div>
-                            </div>
-                            <button
-                                className="admin-main-btn"
-                                onClick={() => loadTargetUser(u)}
-                            >
-                                Manage User
-                            </button>
-                            <button
-                                className="admin-main-btn"
-                                onClick={() => navigate(`/user/${u.uid}`)}
-                            >
-                                View Profile
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+        {/* Search Users */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearch(e);
+          }}
+          className="flex flex-col sm:flex-row gap-2 mb-6"
+        >
+          <input
+            type="text"
+            placeholder="Enter email or UID"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#07d6a1]"
+          />
+          <button
+            type="submit"
+            disabled={searchLoading}
+            className="px-6 py-2 rounded-lg bg-[#07d6a1] text-white hover:bg-[#06be8d] transition"
+          >
+            {searchLoading ? "Searching..." : "Search"}
+          </button>
+        </form>
+        {searchError && <p className="text-red-500 mb-4">{searchError}</p>}
 
-                {/* ------------------ */}
-                {/* Target User Panel */}
-                {/* ------------------ */}
-                {targetUser && (
-                    <div className="admin-user-panel">
-                        <h3>
-                            User: {targetUser.name} ({targetUser.uid})
-                        </h3>
-                        {/* Display Join Date and Last Online */}
-                        <div className="admin-user-info">
-                            <p className="adminview-account-info">
-                                <strong className="adminview-account-info">Join Date:</strong>{" "}
-                                {targetUser.createdAt
-                                    ? new Date(targetUser.createdAt.seconds * 1000).toLocaleString()
-                                    : "N/A"}
-                            </p>
-                            <p className="adminview-account-info">
-                                <strong className="adminview-account-info">Last Online:</strong>{" "}
-                                {targetUser.lastOnline
-                                    ? new Date(targetUser.lastOnline.seconds * 1000).toLocaleString()
-                                    : "N/A"}
-                            </p>
-                        </div>
+        {/* Search Results */}
+        <ul className="space-y-4">
+          {searchResults.map((u) => (
+            <li key={u.uid} className="flex flex-col md:flex-row items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <div className="flex items-center gap-4 mb-2 md:mb-0">
+                <img
+                  src={u.picURL || DEFAULT_PIC}
+                  alt={u.name || u.email}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+                <div>
+                  <p className="font-semibold">{u.name || "Unnamed User"}</p>
+                  <p className="text-sm">{u.email}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">UID: {u.uid}</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg bg-[#07d6a1] text-white hover:bg-[#06be8d] transition"
+                  onClick={() => loadTargetUser(u)}
+                >
+                  Manage User
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-gray-500 dark:bg-gray-600 text-white hover:bg-gray-600 dark:hover:bg-gray-700 transition"
+                  onClick={() => navigate(`/user/${u.uid}`)}
+                >
+                  View Profile
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
 
-
-                        <label>Name:</label>
-                        <input value={newName} onChange={(e) => setNewName(e.target.value)} />
-                        <button className="admin-main-btn" onClick={handleUpdateName}>
-                            Update Name
-                        </button>
-
-                        <label>Profile Image URL:</label>
-                        <input value={newPic} onChange={(e) => setNewPic(e.target.value)} />
-                        <button className="admin-main-btn" onClick={handleUpdatePic}>
-                            Update Profile Image
-                        </button>
-
-                        <button className="admin-delete-btn" onClick={handleDeleteUserPosts}>
-                            Delete User Posts
-                        </button>
-                        <button className="admin-delete-btn" onClick={handleDeleteUser}>
-                            Delete User Account
-                        </button>
-                    </div>
-
-
-
-                )}
+        {/* Target User Panel */}
+        {targetUser && (
+          <div className="mt-8 p-4 bg-white dark:bg-gray-800 rounded-lg shadow space-y-4">
+            <h3 className="text-xl font-bold">
+              User: {targetUser.name} ({targetUser.uid})
+            </h3>
+            <div className="flex flex-col md:flex-row gap-4">
+              <p><strong>Join Date:</strong> {targetUser.createdAt ? new Date(targetUser.createdAt.seconds * 1000).toLocaleString() : "N/A"}</p>
+              <p><strong>Last Online:</strong> {targetUser.lastOnline ? new Date(targetUser.lastOnline.seconds * 1000).toLocaleString() : "N/A"}</p>
             </div>
 
-            <AdvancedScriptPanel />
-        </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 flex flex-col gap-2">
+                <label>Name:</label>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+                <button
+                  className="px-4 py-2 rounded-lg bg-[#07d6a1] text-white hover:bg-[#06be8d] transition"
+                  onClick={handleUpdateName}
+                >
+                  Update Name
+                </button>
+              </div>
+
+              <div className="flex-1 flex flex-col gap-2">
+                <label>Profile Image URL:</label>
+                <input
+                  value={newPic}
+                  onChange={(e) => setNewPic(e.target.value)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+                <button
+                  className="px-4 py-2 rounded-lg bg-[#07d6a1] text-white hover:bg-[#06be8d] transition"
+                  onClick={handleUpdatePic}
+                >
+                  Update Profile Image
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                onClick={handleDeleteUserPosts}
+              >
+                Delete User Posts
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                onClick={handleDeleteUser}
+              >
+                Delete User Account
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                onClick={handleDeleteUserTransactions}
+              >
+                Delete User Transactions
+              </button>
+            </div>
+
+            {/* Notification Creator */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Enter notification message"
+                value={notificationMessage}
+                onChange={(e) => setNotificationMessage(e.target.value)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <button
+                className="px-4 py-2 rounded-lg bg-[#07d6a1] text-white hover:bg-[#06be8d] transition"
+                onClick={() => {
+                  createNotification(targetUser.uid, notificationMessage);
+                  setNotificationMessage("");
+                }}
+              >
+                Send Notification
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* <AdvancedScriptPanel /> */}
+    </div>
     );
 }
+
+
+
+
+
 
 export default AdminPanel;

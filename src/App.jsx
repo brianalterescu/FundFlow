@@ -14,7 +14,7 @@ import EditPicture from "./components/EditPicture";
 import Goals from "./components/Goals.jsx";
 import Transactions from "./components/Transactions.jsx";
 import Features from "./components/Features.jsx";
-import SearchUsers from "./components/SearchUsers.jsx";
+import Users from "./components/Users.jsx";
 import Social from "./components/Social.jsx";
 import CSV from "./components/CSV.jsx";
 import Connections from "./components/Followers.jsx";
@@ -23,6 +23,9 @@ import Wrapped from "./components/Wrapped.jsx";
 import Admin from "./components/Admin.jsx";
 import AdvancedScriptPanel from "./components/AdvancedScriptPanel.jsx"; // New import for AdvancedScriptPanel
 import Learn from "./components/Learn.jsx";
+import TermsOfService from "./components/TermsOfService.jsx";
+import Onboarding from "./components/Onboarding.jsx";
+// import LoadingProvider from "./components/LoadingContext.jsx";
 // Common commands to get hosting working
 // npm install firebase
 // npm install vite
@@ -43,14 +46,16 @@ function App() {
       <Route path="/goals" element={<Goals />} />
       <Route path="/transactions" element={<Transactions />} />
       <Route path="/features" element={<Features />} />
-      <Route path="/searchUser" element={<SearchUsers />} />
+      <Route path="/users" element={<Users />} />
       <Route path="/social" element={<Social />} />
       <Route path="/csv" element={<CSV />} />
       <Route path="/connections" element={<Connections />} />
-      <Route path="/forecast" element={<IncomeForecastTool />} />
+      <Route path="/incomeforecast" element={<IncomeForecastTool />} />
       <Route path="/wrapped" element={<Wrapped />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/learn" element={<Learn />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
+      <Route path="/onboarding" element={<Onboarding />} />
     </Routes>
   );
 }

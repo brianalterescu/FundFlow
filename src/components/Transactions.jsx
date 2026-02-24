@@ -1,63 +1,77 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useContext, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebaseConfig";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { useContext } from "react";
-import { TransactionContext } from "../context/TransactionContext";  // Imports the TransactionContext for accessing user data.
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
+import { 
+  collection, query, where, getDocs, doc, getDoc, 
+  addDoc, setDoc, deleteDoc, serverTimestamp, Timestamp 
 } from "firebase/firestore";
+import { TransactionContext } from "../context/TransactionContext";
+
+// Chart.js imports
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
   Tooltip,
   Legend,
-} from "recharts";
-import "../styles/Transactions.css";
-import { updateProfile } from "firebase/auth";
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
 
-// Toggle state for adding transactions 
+// Icon imports
+import { 
+  Target, Coffee, Gift, Pill, Home, Truck, User, Dog, Zap, Airplay, 
+  CreditCard, Repeat, Gamepad, Users, Volleyball, Briefcase, GraduationCap, 
+  BarChart2, DollarSign, FileText, Film, Box, Trash2 
+} from "lucide-react";
 
-function Profile() {
-  const navigate = useNavigate(); // Constant to call the useNavigate() function
-  const [isIncome, setIsIncome] = useState(false); // Defaults the slider to expense, more expenses than income for most users.
-  const [user, setUser] = useState(null); // Constant to hold the authenticated user information
-  const [profile, setProfile] = useState({}); // Constant to hold the user's profile data
-  const { transactions, setTransactions } = useContext(TransactionContext); // Access transactions from context
-  const [loading, setLoading] = useState(true); // Loading state for the component
-  const [saving, setSaving] = useState(false); // Constant for profile updates
-  const [editId, setEditId] = useState(null); // Constant for the ID of the transaction being edited
-  const [editForm, setEditForm] = useState({}); // Constant for the form data of the transaction being edited
+const categories = [
+  { name: "Food", icon: Coffee }, { name: "Gifts", icon: Gift }, { name: "Health/Medical", icon: Pill }, 
+  { name: "Home", icon: Home }, { name: "Transportation", icon: Truck }, { name: "Personal", icon: User }, 
+  { name: "Pets", icon: Dog }, { name: "Utilities", icon: Zap }, { name: "Travel", icon: Airplay }, 
+  { name: "Debt", icon: CreditCard }, { name: "Subscriptions", icon: Repeat }, { name: "Fun", icon: Gamepad }, 
+  { name: "Social", icon: Users }, { name: "Recreational", icon: Volleyball }, { name: "Work", icon: Briefcase }, 
+  { name: "Education", icon: GraduationCap }, { name: "Investments", icon: BarChart2 }, { name: "Savings", icon: DollarSign }, 
+  { name: "Taxes", icon: FileText }, { name: "Entertainment", icon: Film }, { name: "Other", icon: Box },
+];
 
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend);
+
+function TransactionsPage() {
+  const navigate = useNavigate();
+  const [isIncome, setIsIncome] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState({});
+  const { transactions, setTransactions } = useContext(TransactionContext);
+  const [loading, setLoading] = useState(true);
+  
+  // Edit State
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  // Filtering & Lazy Loading
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [loadedYears, setLoadedYears] = useState(new Set([currentYear])); // Track which years we have fetched
+
+  // Input Refs for Keyboard Navigation
+  const dateInputRef = useRef(null);
+  const amountInputRef = useRef(null);
+  const categoryInputRef = useRef(null);
+  const descInputRef = useRef(null);
 
   const [newTx, setNewTx] = useState({
-    // Necessary fields for transactions
     Category: "",
     Description: "",
     amount: "",
-    // Default date is set up to be current date.
     TransactionDate: new Date().toISOString().split("T")[0],
   });
 
-
   /* ------------------------------------------------- 
-  1. Authentication & Transaction Loading 
-    - Handles user authentication state changes and loads user 
-      data and transactions from Firestore.
+     1. Authentication & Lazy Data Loading 
   ------------------------------------------------- */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -65,7 +79,6 @@ function Profile() {
         setUser(currentUser);
         await loadUserData(currentUser);
       } else {
-        // If unable to authenticate, return to login page.
         navigate("/login");
       }
       setLoading(false);
@@ -73,7 +86,6 @@ function Profile() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Constant function to load user data and transactions from Firestore
   const loadUserData = async (currentUser) => {
     try {
       const userRef = doc(db, "users", currentUser.uid);
@@ -82,7 +94,6 @@ function Profile() {
       if (userSnap.exists()) {
         setProfile(userSnap.data());
       } else {
-        // If no matching user data is able to be retrieved, it is created.
         await setDoc(userRef, {
           email: currentUser.email,
           uid: currentUser.uid,
@@ -91,50 +102,96 @@ function Profile() {
           lastLogin: serverTimestamp(),
         });
       }
-
-      await loadTransactions(currentUser.uid);
+      // Initial Load: Only fetch Current Year
+      await loadTransactionsForYear(currentUser.uid, currentYear);
     } catch (error) {
-      // Displays error in console if user data fails to load.
       console.error("Error loading user data:", error);
     }
   };
-  // Constant function to load transactions for the authenticated user
-  const loadTransactions = async (uid) => {
-    const transactionsRef = collection(db, "transactions"); //sets the transactions collection
-    const q = query(transactionsRef, where("userid", "==", uid)); //matches transactions by checking the uid field in the transactions documents, and matches to the logged in uid
-    const querySnapshot = await getDocs(q); //executes query q 
-    const txList = querySnapshot.docs.map((doc) => ({
-      id: doc.id, // Constant for transaction ID
-      ...doc.data(), // Captures all other transaction data fields
-    }));
-    txList.sort( // Sorts the transactions by date in ascending order
-      (a, b) =>
-        (a.TransactionDate?.seconds || 0) - (b.TransactionDate?.seconds || 0)
-    );
-    // Sets the transactions in context
-    setTransactions(txList);
+
+  // FETCH FUNCTION: Loads data only for a specific year
+  const loadTransactionsForYear = async (uid, year) => {
+    try {
+        const start = new Date(`${year}-01-01T00:00:00`);
+        const end = new Date(`${year}-12-31T23:59:59`);
+        
+        const transactionsRef = collection(db, "transactions");
+        const q = query(
+            transactionsRef, 
+            where("userid", "==", uid),
+            where("TransactionDate", ">=", Timestamp.fromDate(start)),
+            where("TransactionDate", "<=", Timestamp.fromDate(end))
+        );
+
+        const querySnapshot = await getDocs(q);
+        const newTxList = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        // Merge new transactions with existing ones (avoid duplicates)
+        setTransactions(prev => {
+            const existingIds = new Set(prev.map(t => t.id));
+            const uniqueNew = newTxList.filter(t => !existingIds.has(t.id));
+            return [...prev, ...uniqueNew].sort(
+                (a, b) => (b.TransactionDate?.seconds || 0) - (a.TransactionDate?.seconds || 0)
+            );
+        });
+    } catch (err) {
+        console.error("Error loading transactions for year", year, err);
+    }
   };
 
-  // Constant
+  // HANDLER: Switch Year (and fetch if needed)
+  const handleYearChange = async (year) => {
+    setSelectedYear(year);
+    
+    // Check if we already loaded this year to save reads
+    if (!loadedYears.has(year) && user) {
+        setLoading(true);
+        await loadTransactionsForYear(user.uid, year);
+        setLoadedYears(prev => new Set(prev).add(year));
+        setLoading(false);
+    }
+  };
 
-  // Constant to handle changes in the new transaction form
+  /* ------------------------------------------------- 
+     2. Keyboard Navigation Logic
+  ------------------------------------------------- */
+  const handleKeyDown = (e, currentField) => {
+    // Navigate inputs using Arrow Keys
+    if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(e.key)) {
+        e.preventDefault();
+        
+        const inputs = [dateInputRef, amountInputRef, categoryInputRef, descInputRef];
+        const currentIndex = inputs.findIndex(ref => ref === currentField);
+        let nextIndex = currentIndex;
+
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            nextIndex = Math.min(currentIndex + 1, inputs.length - 1);
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            nextIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        inputs[nextIndex].current.focus();
+    }
+  };
+
+  /* ------------------------------------------------- 
+     3. CRUD Operations
+  ------------------------------------------------- */
   const handleTxChange = (e) =>
     setNewTx({ ...newTx, [e.target.name]: e.target.value });
 
-  // Constant to add a new transaction
   const handleAddTransaction = async () => {
-    // If no user is detected, have the user log in.
     if (!user) return alert("You must be logged in.");
     const { Category, Description, amount, TransactionDate } = newTx;
-    const fixedDate = new Date(editForm.TransactionDate + "T12:00:00");
-    // If any fields are null, an alert is shown to the user.
+
     if (!Category || !Description || !amount || !TransactionDate)
       return alert("Please fill in all fields.");
 
     try {
-      console.log("isIncome:", isIncome, "amount:", amount);
-
-      await addDoc(collection(db, "transactions"), {
+      const docRef = await addDoc(collection(db, "transactions"), {
         Category,
         Description,
         "transaction amount": parseFloat(amount) * (isIncome ? 1 : -1),
@@ -143,38 +200,50 @@ function Profile() {
         createdAt: serverTimestamp(),
       });
 
-      // Creates the new transaction based on the new data.
+      const newTransaction = {
+        id: docRef.id,
+        Category,
+        Description,
+        "transaction amount": parseFloat(amount) * (isIncome ? 1 : -1),
+        userid: user.uid,
+        TransactionDate: { seconds: Math.floor(new Date(TransactionDate + "T12:00:00").getTime() / 1000) },
+      };
+
+      // Optimistically update UI
+      setTransactions(prev => [newTransaction, ...prev]);
       setNewTx({ Category: "", Description: "", amount: "", TransactionDate: "" });
-      // All transactions based on the uid (primary key) are loaded.
-      await loadTransactions(user.uid);
-      alert("Transaction added successfully!");
+      
+      // Reset focus to amount for rapid entry
+      amountInputRef.current.focus();
+      
+      alert("Transaction added!");
     } catch (error) {
       console.log("Error adding transaction:", error);
     }
   };
 
-  // Constant to delete a transaction by its ID
   const handleDeleteTransaction = async (id) => {
-    // Confirm with user before deleteing. If they cancel exit the function early
     if (!window.confirm("Are you sure you want to delete this transaction?")) return;
-
     try {
-
-      // Delete transaction document from the firestore "transactions" collection
       await deleteDoc(doc(db, "transactions", id));
-
-      // Reload the transactions for the current user to update the UI
-      await loadTransactions(user.uid);
+      setTransactions(prev => prev.filter(t => t.id !== id));
     } catch (error) {
-      // If an error occurs during deletion, log it to the console
       console.error("Error deleting transaction:", error);
-
-      // Show an alert notifcation to the user indiation deletion failed
       alert("Failed to delete transaction.");
     }
   };
 
-  // Constant necessary for editing transactions
+  // Filter existing state for display
+  const filteredTransactions = useMemo(() => {
+    return transactions
+      .filter((t) => {
+        const txYear = new Date(t.TransactionDate.seconds * 1000).getFullYear();
+        return txYear === selectedYear;
+      })
+      .sort((a, b) => b.TransactionDate.seconds - a.TransactionDate.seconds);
+  }, [transactions, selectedYear]);
+
+  // Editing Logic
   const startEdit = (tx) => {
     setEditId(tx.id);
     setEditForm({
@@ -187,380 +256,432 @@ function Profile() {
       isIncome: tx["transaction amount"] >= 0,
     });
   };
-  // Constant to cancel editing a transaction
+
   const cancelEdit = () => {
     setEditId(null);
     setEditForm({});
   };
-  // Constant to handle changes in the edit transaction form
+
   const handleEditChange = (e) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
-  // Constant to save the edited transaction
+
   const saveEdit = async (id) => {
     const txRef = doc(db, "transactions", id);
-
     const fixedDate = new Date(editForm.TransactionDate + "T12:00:00");
+    const newAmount = parseFloat(editForm.amount) * (editForm.isIncome ? 1 : -1);
+
     await setDoc(
       txRef,
       {
         TransactionDate: Timestamp.fromDate(fixedDate),
         Category: editForm.Category,
         Description: editForm.Description,
-        "transaction amount":
-          parseFloat(editForm.amount) *
-          (editForm.isIncome ? 1 : -1),
+        "transaction amount": newAmount,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
-
-    await loadTransactions(user.uid);
+    
+    // Update local state without re-fetching
+    setTransactions(prev => prev.map(t => t.id === id ? { 
+        ...t, 
+        Category: editForm.Category, 
+        Description: editForm.Description,
+        "transaction amount": newAmount,
+        TransactionDate: { seconds: Math.floor(fixedDate.getTime()/1000) }
+    } : t));
 
     setEditId(null);
     setEditForm({});
   };
 
-
-  // Constant to return a user to login page after signing them out.
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/login");
   };
 
-  // Constant for Rechart data positive transactions are income, negative are expenses
-  const chartData = transactions.map((t) => ({
-    date: t.TransactionDate?.seconds
-      ? new Date(t.TransactionDate.seconds * 1000).toLocaleDateString() //fixes issue where firebase datestring was not cooperating with rechart formatting by converting to a different type of date string
-      : "Unknown",
-    income: t["transaction amount"] > 0 ? t["transaction amount"] : 0, //income is defined as transactions with a positive value 
-    expense: t["transaction amount"] < 0 ? Math.abs(t["transaction amount"]) : 0, //expenses are transactions with a negative value
-  }));
-
-  const total = transactions.reduce(
+  /* ------------------------------------------------- 
+     4. Chart Data & Totals (Based on YTD/Filtered)
+  ------------------------------------------------- */
+  // NOTE: This is now based on 'filteredTransactions' (YTD), NOT all 'transactions'
+  const ytdTotal = filteredTransactions.reduce(
     (acc, t) => acc + t["transaction amount"],
     0
   );
 
-  // Displays loading message to user.
-  // TBD - Add loading icon here.
-  if (loading) return <p style={{ color: "#fff", textAlign: "center" }}>Loading...</p>;
-  const categories = ["Food", "Gifts", "Health/Medical", "Home", "Transportation", "Personal", "Pets", "Utilities", "Travel", "Debt", "Subscriptions", "Fun", "Social", "Recreational", "Other"];
+  const isDark = document.documentElement.classList.contains("dark");
+
+  const chartData = useMemo(() => {
+    const aggregation = {};
+    filteredTransactions.forEach((t) => {
+      const category = t.Category || "Other";
+      const amount = t["transaction amount"] || 0;
+      if (!aggregation[category]) aggregation[category] = 0;
+      aggregation[category] += amount;
+    });
+
+    const labels = Object.keys(aggregation);
+    const data = Object.values(aggregation);
+    const backgroundColor = data.map((a) => (a < 0 ? "#FF6B6B" : "#06D6A0"));
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: `Transactions (${selectedYear})`,
+          data,
+          backgroundColor,
+        },
+      ],
+    };
+  }, [filteredTransactions, selectedYear]);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: { color: isDark ? "#fff" : "#000" },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: isDark ? "#fff" : "#000" },
+        grid: { display: false },
+      },
+      y: {
+        ticks: { color: isDark ? "#fff" : "#000" },
+        grid: { color: isDark ? "#374151" : "#e5e7eb" },
+      },
+    },
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading Financial Data...</div>;
 
   return (
-    <div className="page">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-['Lexend_Deca']">
 
-      {/* Standard Header Bar at the top of the page */}
-      <header className="header-bar">
-        <Link to="/dashboard">
-          <img
-            src="./FundFlowLogo2.png"
-            alt="Fund Flow Logo"
-            className="logo"
-          />
-        </Link>
+      {/* HEADER */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img
+              src="./FundFlow-Favicon.png"
+              alt="FundFlow Logo"
+              className="h-8 w-auto"
+            />
+            {/* LOGO COLOR LOGIC */}
+            <span className="text-xl font-semibold text-gray-900 dark:text-white">
+              <span className="text-[#06D6A0] font-bold">Fund</span>Flow
+            </span>
+          </Link>
 
-
-        <nav className="nav-links">
-          <Link to="/" className="nav-btn">Home</Link>
-          <Link to="/dashboard" className="nav-btn">Dashboard</Link>
-          <Link to="/social" className="nav-btn">Social</Link>
-          <Link to="/profile" className="nav-btn">Profile</Link>
-          <button onClick={handleLogout} className="logout-small">Logout</button>
-        </nav>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link to="/dashboard" className="hover:text-[#06d6a0]">Dashboard</Link>
+            <Link to="/transactions" className="hover:text-[#06d6a0]">Transactions</Link>
+            <Link to="/social" className="hover:text-[#06d6a0]">Social</Link>
+            <Link to="/profile" className="hover:text-[#06d6a0]">Profile</Link>
+          </nav>
+        </div>
       </header>
 
-      <div className="header-spacer" />
+      {/* HEADER SPACER */}
+      <div className="h-16" />
 
-      {/* MAIN CARD */}
+      {/* MAIN CONTENT */}
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-10">
 
-
-      {/* Section for adding a transaction.*/}
-      <div className="section">
-        <h2 className="section-header">Add Transaction</h2>
-        {/* Toggle Switch Start */}
-        <div className="toggle-switch-wrapper">
-          <div className={`toggle-switch ${isIncome ? "expense" : "income"}`}>
-            <div className="slider" />
-            <button
-              className="toggle-option minus"
-              onClick={() => setIsIncome(false)}
-            >
-              Expense
-            </button>
-            <button
-              className="toggle-option plus"
-              onClick={() => setIsIncome(true)}
-            >
-              Income
-            </button>
-
-          </div>
+        {/* ADD TRANSACTION CARD */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-xl font-semibold">Add Transaction</h2>
+          <Link
+            to="/csv"
+            className="px-4 py-2 text-sm font-medium rounded-full border border-[#06d6a0] text-[#06d6a0] hover:bg-[#06d6a0]/10 transition whitespace-nowrap"
+          >
+            Upload via CSV
+          </Link>
         </div>
 
-        {/* Toggle Switch End */}
-        <input
-          type="date"
-          name="TransactionDate"
-          value={newTx.TransactionDate}
-          onChange={handleTxChange}
-          className="input"
-        />
-        <input
-          type="number"
-          name="amount"
-          value={newTx.amount}
-          onChange={handleTxChange}
-          placeholder="Amount (67.00)"
-          className="input"
-        />
-        <input
-          name="Category"
-          value={newTx.Category}
-          onChange={handleTxChange}
-          placeholder="Category"
-          className="input"
-        />
-        <input
-          name="Description"
-          value={newTx.Description}
-          onChange={handleTxChange}
-          placeholder="Description"
-          className="input"
-        />
-        <div className="category-grid">
-          {[
-            { name: "Food", icon: "🍔" },
-            { name: "Gifts", icon: "🎁" },
-            { name: "Health/Medical", icon: "💊" },
-            { name: "Home", icon: "🏠" },
-            { name: "Transportation", icon: "🚗" },
-            { name: "Personal", icon: "🧍" },
-            { name: "Pets", icon: "🐾" },
-            { name: "Utilities", icon: "💡" },
-            { name: "Travel", icon: "✈️" },
-            { name: "Debt", icon: "💳" },
-            { name: "Subscriptions", icon: "🔄" },
-            { name: "Fun", icon: "🎮" },
-            { name: "Social", icon: "🍻" },
-            { name: "Recreational", icon: "⚽" },
-            { name: "Other", icon: "📦" },
-          ].map((cat) => (
+        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-6 border border-gray-100 dark:border-gray-700">
+          {/* INCOME / EXPENSE TOGGLE */}
+          <div className="relative max-w-sm mx-auto">
+            <div className="grid grid-cols-2 bg-gray-200 dark:bg-gray-700 rounded-full p-1 text-sm font-medium relative">
+              <div
+                className={`absolute top-1 bottom-1 w-1/2 rounded-full transition-transform duration-300
+                  ${isIncome ? "translate-x-full bg-[#06d6a0]" : "translate-x-0 bg-red-500"}`}
+              />
+              <button
+                onClick={() => setIsIncome(false)}
+                className={`relative z-10 py-2 rounded-full transition ${!isIncome ? "text-white" : "text-gray-700 dark:text-gray-300"}`}
+              >
+                Expense
+              </button>
+              <button
+                onClick={() => setIsIncome(true)}
+                className={`relative z-10 py-2 rounded-full transition ${isIncome ? "text-white" : "text-gray-700 dark:text-gray-300"}`}
+              >
+                Income
+              </button>
+            </div>
+          </div>
+
+          {/* INPUTS - NOW WITH KEYBOARD NAVIGATION */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              ref={dateInputRef}
+              onKeyDown={(e) => handleKeyDown(e, dateInputRef)}
+              type="date"
+              name="TransactionDate"
+              value={newTx.TransactionDate}
+              onChange={handleTxChange}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#06d6a0] outline-none"
+            />
+            <input
+              ref={amountInputRef}
+              onKeyDown={(e) => handleKeyDown(e, amountInputRef)}
+              type="number"
+              name="amount"
+              value={newTx.amount}
+              onChange={handleTxChange}
+              placeholder="Amount (67.00)"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#06d6a0] outline-none"
+            />
+            <input
+              ref={categoryInputRef}
+              onKeyDown={(e) => handleKeyDown(e, categoryInputRef)}
+              name="Category"
+              value={newTx.Category}
+              onChange={handleTxChange}
+              placeholder="Category"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#06d6a0] outline-none md:col-span-2"
+            />
+            <input
+              ref={descInputRef}
+              onKeyDown={(e) => handleKeyDown(e, descInputRef)}
+              name="Description"
+              value={newTx.Description}
+              onChange={handleTxChange}
+              placeholder="Description"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#06d6a0] outline-none md:col-span-2"
+            />
+          </div>
+
+          {/* CATEGORY GRID */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => {
+                    handleTxChange({ target: { name: "Category", value: cat.name } });
+                    categoryInputRef.current.focus(); // Keep focus flow
+                  }}
+                  className={`p-2 rounded-lg flex flex-col items-center justify-center gap-1 text-xs sm:text-sm border transition ${
+                    newTx.Category === cat.name
+                      ? "bg-[#06d6a0] text-white border-[#06d6a0]"
+                      : "bg-gray-100 dark:bg-gray-700 dark:text-white border-gray-300 dark:border-gray-600"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="truncate max-w-full">{cat.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ADD BUTTON */}
+          <button
+            onClick={handleAddTransaction}
+            className="w-full md:w-fit px-6 py-3 rounded-lg bg-[#06d6a0] text-white font-semibold hover:bg-[#06be8d] transition"
+          >
+            Add Transaction
+          </button>
+        </section>
+
+        {/* YEAR FILTER (LAZY LOADING TRIGGERS) */}
+        <div className="flex gap-4 mb-4">
+          {[currentYear, currentYear - 1, currentYear - 2].map((year) => (
             <button
-              key={cat.name}
-              type="button"
-              className={`category-btn ${newTx.Category === cat.name ? "selected" : ""
-                }`}
-              onClick={() =>
-                handleTxChange({
-                  target: { name: "Category", value: cat.name },
-                })
-              }
+              key={year}
+              onClick={() => handleYearChange(year)}
+              className={`px-4 py-2 rounded-full font-medium border transition ${
+                selectedYear === year
+                  ? "bg-[#06d6a0] text-white border-[#06d6a0]"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600"
+              }`}
             >
-              <span className="icon">{cat.icon}</span> {cat.name}
+              {year}
             </button>
           ))}
         </div>
 
-
-        <button onClick={handleAddTransaction} className="primary-btn">
-          Add Transaction
-        </button>
-
-
-        {/*TBD- rechart of income vs expenses may get replaced with chartjs down the line which does not require an installed package */}
-        <div className="section">
-          <h2 className="section-header">Money Flow Overview</h2>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="incomeColor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00E0A1" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#00E0A1" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="expenseColor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F9295F" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#F9295F" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <Tooltip />
-                <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="income"
-                  stroke="#00E0A1"
-                  fillOpacity={1}
-                  fill="url(#incomeColor)"
-                  name="Money In"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="expense"
-                  stroke="#F9295F"
-                  fillOpacity={1}
-                  fill="url(#expenseColor)"
-                  name="Money Out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="empty-text">No transactions to display yet.</p>
-          )}
-        </div>
-
-        <div className="summary-box">
-          <h3>Net Total:</h3>
-          <p
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-              color: total >= 0 ? "#00E0A1" : "#F9295F",
-            }}
-          >
-            {total >= 0 ? "+" : "-"}${Math.abs(total).toFixed(2)}
+        {/* NET TOTAL (YTD) */}
+        <section className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 text-center">
+          <h3 className="text-sm text-gray-500 dark:text-gray-400">Net Total ({selectedYear} YTD)</h3>
+          <p className={`text-2xl font-bold ${ytdTotal >= 0 ? "text-[#06d6a0]" : "text-red-500"}`}>
+            {ytdTotal >= 0 ? "+" : "-"}${Math.abs(ytdTotal).toFixed(2)}
           </p>
-        </div>
+        </section>
 
-        {/* Transactions  */}
-        <div className="section">
-          <h2 className="section-header">Your Transactions</h2>
+        {/* CHART SECTION (YTD) */}
+        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border border-gray-100 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4">Spending & Income ({selectedYear})</h3>
+          <div className="h-72">
+            <Bar data={chartData} options={chartOptions} />
+          </div>
+        </section>
 
-          {transactions.length > 0 ? (
-            <div className="tx-table-wrapper">
-              <table className="tx-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t.id}>
+        {/* TRANSACTIONS TABLE */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden border border-gray-100 dark:border-gray-700">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400">
+                  <th className="px-3 py-3">Date</th>
+                  <th className="px-3 py-3">Amount</th>
+                  <th className="px-3 py-3">Description</th>
+                  <th className="px-3 py-3">Category</th>
+                  <th className="px-3 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.map((t) => (
+                  <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    
+                    {/* DATE */}
+                    <td className="px-3 py-3">
+                      {editId === t.id ? (
+                        <input
+                          type="date"
+                          name="TransactionDate"
+                          value={editForm.TransactionDate}
+                          onChange={handleEditChange}
+                          className="w-full px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                      ) : (
+                        t.TransactionDate?.seconds
+                          ? new Date(t.TransactionDate.seconds * 1000).toLocaleDateString()
+                          : "—"
+                      )}
+                    </td>
 
-                      {/* DATE */}
-                      <td>
-                        {editId === t.id ? (
-                          <input
-                            type="date"
-                            name="TransactionDate"
-                            value={editForm.TransactionDate}
-                            onChange={handleEditChange}
-                          />
-                        ) : (
-                          t.TransactionDate?.seconds
-                            ? new Date(t.TransactionDate.seconds * 1000).toLocaleDateString()
-                            : "—"
-                        )}
-                      </td>
+                    {/* AMOUNT */}
+                    <td className="px-3 py-3 font-semibold">
+                      {editId === t.id ? (
+                        <input
+                          type="number"
+                          name="amount"
+                          value={editForm.amount}
+                          onChange={handleEditChange}
+                          className="w-full px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                      ) : (
+                        <span className={t["transaction amount"] < 0 ? "text-red-500" : "text-[#06d6a0]"}>
+                          {t["transaction amount"] < 0 ? "-" : "+"}${Math.abs(t["transaction amount"]).toFixed(2)}
+                        </span>
+                      )}
+                    </td>
 
-                      {/* AMOUNT */}
-                      <td>
-                        {editId === t.id ? (
-                          <input
-                            type="number"
-                            name="amount"
-                            value={editForm.amount}
-                            onChange={handleEditChange}
-                          />
-                        ) : (
-                          <span
-                            style={{
-                              fontWeight: "bold",
-                              color:
-                                t["transaction amount"] < 0 ? "#F9295F" : "#00E0A1",
-                            }}
+                    {/* DESCRIPTION */}
+                    <td className="px-3 py-3">
+                      {editId === t.id ? (
+                        <input
+                          type="text"
+                          name="Description"
+                          value={editForm.Description}
+                          onChange={handleEditChange}
+                          className="w-full px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                      ) : (
+                        t.Description
+                      )}
+                    </td>
+
+                    {/* CATEGORY */}
+                    <td className="px-3 py-3">
+                      {editId === t.id ? (
+                        <input
+                          type="text"
+                          name="Category"
+                          value={editForm.Category}
+                          onChange={handleEditChange}
+                          className="w-full px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                      ) : (
+                        t.Category
+                      )}
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td className="px-3 py-3 flex gap-2">
+                      {editId === t.id ? (
+                        <>
+                          <button
+                            onClick={() => saveEdit(t.id)}
+                            className="px-3 py-1 rounded bg-[#06d6a0] text-white hover:bg-[#06be8d] text-sm"
                           >
-                            {t["transaction amount"] < 0 ? "-" : "+"}$
-                            {Math.abs(t["transaction amount"])}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* DESCRIPTION */}
-                      <td>
-                        {editId === t.id ? (
-                          <input
-                            type="text"
-                            name="Description"
-                            value={editForm.Description}
-                            onChange={handleEditChange}
-                          />
-                        ) : (
-                          t.Description
-                        )}
-                      </td>
-
-                      {/* CATEGORY */}
-                      <td>
-                        {editId === t.id ? (
-                          <input
-                            type="text"
-                            name="Category"
-                            value={editForm.Category}
-                            onChange={handleEditChange}
-                          />
-                        ) : (
-                          t.Category
-                        )}
-                      </td>
-
-                      {/* ACTIONS */}
-                      <td style={{ display: "flex", gap: "0.4rem" }}>
-                        {editId === t.id ? (
-                          <>
-                            <button
-                              className="admin-main-btn"
-                              onClick={() => saveEdit(t.id)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              className="admin-delete-btn"
-                              onClick={cancelEdit}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              className="admin-main-btn"
-                              onClick={() => startEdit(t)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="delete-btn-table"
-                              onClick={() => handleDeleteTransaction(t.id)}
-                              title="Delete Transaction"
-                            >
-                              🗑️
-                            </button>
-                          </>
-                        )}
-                      </td>
-
-                    </tr>
-                  ))}
-                </tbody>
-
-              </table>
-            </div>
-          ) : (
-            <p className="empty-text">No transactions yet.</p>
-          )}
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-3 py-1 rounded bg-gray-300 dark:bg-gray-600 text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEdit(t)}
+                            className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaction(t.id)}
+                            className="px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600 flex items-center justify-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+
+      </main>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <div className="grid grid-cols-5 text-[11px]">
+          {[
+            { label: "Dashboard", icon: Home, to: "/dashboard" },
+            { label: "Goals", icon: Target, to: "/goals" },
+            { label: "Social", icon: Users, to: "/social" },
+            { label: "Profile", icon: User, to: "/profile" },
+          ].map(({ label, icon: Icon, to }) => (
+            <Link
+              key={label}
+              to={to}
+              className="flex flex-col items-center justify-center py-2 transition text-gray-500 dark:text-gray-400 hover:text-[#06d6a0] dark:hover:text-[#06d6a0]"
+            >
+              <Icon className="w-5 h-5 mb-0.5" />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
+
     </div>
   );
 }
 
-export default Profile;
+export default TransactionsPage;

@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { useNotificationContext } from '../context/NotificationContext';
 import NotificationList from './NotificationList';
-import '../styles/notifications.css';
+// import '../styles/notifications.css';
 
 
 const NotificationBell = () => {

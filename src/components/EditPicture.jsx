@@ -3,7 +3,7 @@ import { auth, db } from "../firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
-import "../styles/Profile.css";
+
 
 function EditPicture() {
   const navigate = useNavigate();

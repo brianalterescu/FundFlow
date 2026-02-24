@@ -1,507 +1,504 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import '../styles/Wrapped.css';
-import { db } from '../firebaseConfig.js';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { db } from "../firebaseConfig";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { Link } from "react-router-dom";
+import LoadingScreen from "./LoadingScreen"; 
 
-const FinanceTracker = () => {
+// Icons
+import { 
+  X, Play, ChevronLeft, Menu, Wallet, TrendingUp, Award, Calendar, Home, CreditCard, Target, Users, User, Star, Zap
+} from "lucide-react";
+
+// Chart.js
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend);
+
+/* -------------------------------------------------------------------------- */
+/* SUB-COMPONENTS                              */
+/* -------------------------------------------------------------------------- */
+
+// 1. Story Progress Bar
+const ProgressBar = ({ active, completed }) => {
+  return (
+    <div className="h-1.5 flex-1 bg-white/30 rounded-full overflow-hidden mx-1">
+      <div 
+        className={`h-full bg-white transition-all duration-[5000ms] ease-linear ${
+          active ? "w-full" : completed ? "w-full duration-0" : "w-0 duration-0"
+        }`} 
+      />
+    </div>
+  );
+};
+
+// 2. Personality Badge (Dynamic based on data)
+const PersonalityBadge = ({ type }) => {
+  const badges = {
+    "Saver": { icon: "🐿️", color: "bg-emerald-500", text: "The Stasher", desc: "You saved more than 20% of your income! Your future self thanks you." },
+    "Spender": { icon: "🛍️", color: "bg-rose-500", text: "The High Roller", desc: "You enjoyed your money this year. Treat yourself (but maybe budget next year)." },
+    "Balanced": { icon: "⚖️", color: "bg-blue-500", text: "The Zen Master", desc: "Perfectly balanced income and expenses. You are one with the Force." },
+    "Foodie": { icon: "🍔", color: "bg-orange-500", text: "The Foodie", desc: "Your top spending category was Food. Delicious choices!" },
+    "Traveler": { icon: "✈️", color: "bg-sky-500", text: "The Jetsetter", desc: "Travel was your priority. Memories > Things." },
+  };
+  
+  const b = badges[type] || badges["Balanced"];
+
+  return (
+    <div className="flex flex-col items-center animate-in zoom-in duration-700">
+      <div className={`w-40 h-40 ${b.color} rounded-full flex items-center justify-center text-7xl shadow-2xl mb-8 animate-bounce`}>
+        {b.icon}
+      </div>
+      <h2 className="text-5xl font-black text-white uppercase tracking-tighter mb-4 text-center">{b.text}</h2>
+      <p className="text-white/90 text-xl max-w-xs text-center font-medium leading-relaxed">{b.desc}</p>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* MAIN COMPONENT                              */
+/* -------------------------------------------------------------------------- */
+
+export default function Wrapped() {
   const [transactions, setTransactions] = useState([]);
-  const [expectations, setExpectations] = useState([
-    { id: 1, name: 'Emergency Fund', target: 10000, current: 6500 },
-    { id: 2, name: 'Vacation Savings', target: 5000, current: 3200 },
-    { id: 3, name: 'Monthly Savings', target: 1000, current: 850 }
-  ]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('summary'); // 'summary', 'stories', 'goals'
   const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Story Mode State
+  const [showStory, setShowStory] = useState(false);
+  const [storyIndex, setStoryIndex] = useState(0);
+  const timerRef = useRef(null);
 
-  // Listen for auth state changes
+  // Sidebar State (Fix: This was missing in your code)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  /* ───────── AUTH & DATA LOADING ───────── */
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUserId(user?.uid || null);
-    });
-    return () => unsubscribe();
+    return onAuthStateChanged(auth, (user) => setUserId(user ? user.uid : null));
   }, []);
 
-  console.log("userId:", userId);
-
-  // Load transactions from Firestore
   useEffect(() => {
     if (!userId) return;
-
-    const loadData = async () => {
+    
+    const load = async () => {
       setLoading(true);
-
       try {
-        const snapshot = await getDocs(
-          query(collection(db, 'transactions'), where('userid', '==', userId))
-        );
+        const q = query(collection(db, "transactions"), where("userid", "==", userId));
+        const snap = await getDocs(q);
 
-        // Normalize all transaction dates
-        const data = snapshot.docs.map(doc => {
+        const data = snap.docs.map((doc) => {
           const t = doc.data();
-          const date = t.TransactionDate?.toDate?.() || new Date(t.date || t.createdAt?.toDate?.() || Date.now());
-          return { id: doc.id, ...t, date };
+          const date = t.TransactionDate?.toDate?.() || 
+                       (t.TransactionDate?.seconds ? new Date(t.TransactionDate.seconds * 1000) : new Date());
+          return { ...t, date };
         });
-
-        const filtered = data.filter(t => t.date.getFullYear() === selectedYear);
-
-        console.log('Filtered transactions:', filtered);
-        setTransactions(filtered);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
+        setTransactions(data);
+      } catch (e) {
+        console.error("Error loading wrapped:", e);
       }
-
       setLoading(false);
     };
+    
+    load();
+  }, [userId]);
 
-    loadData();
-  }, [userId, selectedYear]);
-
-  // Analytics calculations
+  /* ───────── ANALYTICS ENGINE ───────── */
   const analytics = useMemo(() => {
-    const yearTransactions = transactions.filter(t => t.date.getFullYear() === selectedYear);
-
-    // Treat positive amounts as income, negative as expenses
-    const totalIncome = yearTransactions
-      .filter(t => t["transaction amount"] > 0)
-      .reduce((sum, t) => sum + t["transaction amount"], 0);
-
-    const totalExpenses = yearTransactions
-      .filter(t => t["transaction amount"] < 0)
-      .reduce((sum, t) => sum + Math.abs(t["transaction amount"]), 0);
-
-    const netSavings = totalIncome - totalExpenses;
-
-    // Category breakdown for expenses
+    let income = 0;
+    let expenses = 0;
     const categoryMap = {};
-    yearTransactions
-      .filter(t => t["transaction amount"] < 0)
-      .forEach(t => {
-        const cat = t.Category || 'Other';
-        categoryMap[cat] = (categoryMap[cat] || 0) + Math.abs(t["transaction amount"]);
-      });
+    const monthlySpending = Array(12).fill(0);
+    let highestSpendTx = { amount: 0, description: "" };
 
-    const categoryBreakdown = Object.entries(categoryMap)
-      .map(([category, amount]) => ({ category, amount }))
-      .sort((a, b) => b.amount - a.amount);
+    transactions.forEach((t) => {
+      const rawAmt = Number(t["transaction amount"] || t.amount || 0);
+      const m = t.date.getMonth(); 
+      
+      if (rawAmt > 0) {
+        income += rawAmt;
+      } else {
+        const absAmt = Math.abs(rawAmt);
+        expenses += absAmt;
+        const cat = t.Category || "Other";
+        categoryMap[cat] = (categoryMap[cat] || 0) + absAmt;
+        monthlySpending[m] += absAmt;
 
-    // Monthly trend
-    const monthlyData = Array.from({ length: 12 }, (_, i) => ({ month: i, income: 0, expenses: 0 }));
-    yearTransactions.forEach(t => {
-      const month = t.date.getMonth();
-      if (t["transaction amount"] > 0) monthlyData[month].income += t["transaction amount"];
-      else monthlyData[month].expenses += Math.abs(t["transaction amount"]);
+        if (absAmt > highestSpendTx.amount) {
+            highestSpendTx = { amount: absAmt, description: t.Description || "Unknown Purchase" };
+        }
+      }
     });
 
-    const currentMonth = new Date().getMonth();
-    const lastMonthExpenses = monthlyData[currentMonth - 1]?.expenses || 0;
-    const currentMonthExpenses = monthlyData[currentMonth]?.expenses || 0;
-    const expenseChange = lastMonthExpenses > 0
-      ? ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
-      : 0;
+    const categories = Object.entries(categoryMap)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
 
-    const topCategory = categoryBreakdown[0] || { category: 'N/A', amount: 0 };
+    const topCategory = categories[0] || { label: "None", value: 0 };
+
+    // Personality Logic
+    let personality = "Balanced";
+    const savingsRate = income > 0 ? ((income - expenses) / income) : 0;
+    
+    if (topCategory.label.toLowerCase().includes("food") || topCategory.label.toLowerCase().includes("restaurant")) personality = "Foodie";
+    else if (topCategory.label.toLowerCase().includes("travel") || topCategory.label.toLowerCase().includes("flight")) personality = "Traveler";
+    else if (savingsRate > 0.20) personality = "Saver";
+    else if (savingsRate < 0) personality = "Spender";
 
     return {
-      totalIncome,
-      totalExpenses,
-      netSavings,
-      categoryBreakdown,
-      monthlyData,
+      income,
+      expenses,
+      net: income - expenses,
+      categories,
+      monthlySpending,
+      count: transactions.length,
       topCategory,
-      expenseChange,
-      transactionCount: yearTransactions.length
+      highestSpendTx,
+      personality
     };
-  }, [transactions, selectedYear]);
+  }, [transactions]);
 
-  const handleShare = () => {
-    alert('Share functionality - integrate html2canvas or similar');
-  };
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading your financial data...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="finance-tracker">
-      {/* Navbar */}
-      {/* Standard navigation to access other JSX files */}
-      <header className="navbar">
-        <Link to="/dashboard">
-          <img src="./FundFlowLogo2.png" alt="Fund Flow" className="logo" />
-        </Link>
-        <nav className="nav-links">
-          <a href="/dashboard" className="nav-links">Dashboard</a>
-          <a href="/transactions" className="nav-links">Transactions</a>
-          <a href="/goals" className="nav-links">Goals</a>
-          <a href="/connections" className="nav-links">Connections</a>
-          <a href="/searchUser" className="nav-links">Users</a>
-          <a href="/profile" className="nav-links">Profile</a>
-        </nav>
-      </header>
-
-      <header className="header">
-        <h1>Your {selectedYear} Financial Journey</h1>
-        <div className="header-controls">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="year-selector"
-          >
-            <option value={2025}>2025</option>
-            <option value={2024}>2024</option>
-            <option value={2023}>2023</option>
-            <option value={2022}>2022</option>
-          </select>
-          <button onClick={handleShare} className="share-btn">Share Summary</button>
-        </div>
-      </header>
-
-      <nav className="view-tabs">
-        <button className={viewMode === 'summary' ? 'active' : ''} onClick={() => setViewMode('summary')}>Summary</button>
-        <button className={viewMode === 'stories' ? 'active' : ''} onClick={() => setViewMode('stories')}>Stories</button>
-        <button className={viewMode === 'goals' ? 'active' : ''} onClick={() => setViewMode('goals')}>Goals</button>
-      </nav>
-
-      <main id="summary-container" className="content">
-        {viewMode === 'summary' && <SummaryView analytics={analytics} />}
-        {viewMode === 'stories' && <StoriesView analytics={analytics} />}
-        {viewMode === 'goals' && <GoalsView expectations={expectations} />}
-      </main>
-    </div>
-  );
-};
-
-// ---------- COMPONENTS: SummaryView, StoriesView, GoalsView, StatCard, InsightCard, DonutChart, BarChart ----------
-
-
-/**
- * SUMMARY VIEW COMPONENT
- * Displays overview cards and charts
- */
-const SummaryView = ({ analytics }) => {
-  return (
-    <div className="summary-view">
-      <div className="stats-grid">
-        <StatCard
-          title="Total Income"
-          value={analytics.totalIncome}
-          trend="up"
-          icon="💰"
-        />
-        <StatCard
-          title="Total Expenses"
-          value={analytics.totalExpenses}
-          trend="neutral"
-          icon="💸"
-        />
-        <StatCard
-          title="Net Savings"
-          value={analytics.netSavings}
-          trend={analytics.netSavings > 0 ? 'up' : 'down'}
-          icon="🏦"
-        />
-        <StatCard
-          title="Transactions"
-          value={analytics.transactionCount}
-          trend="neutral"
-          icon="📊"
-          isNumber
-        />
-      </div>
-
-      <div className="charts-section">
-        <div className="chart-container">
-          <h3>Spending by Category</h3>
-          <DonutChart data={analytics.categoryBreakdown} />
-        </div>
-
-        <div className="chart-container">
-          <h3>Monthly Trend</h3>
-          <BarChart data={analytics.monthlyData} />
-        </div>
-      </div>
-
-      <div className="insights-section">
-        <InsightCard
-          title="Top Spending Category"
-          description={`You spent the most on ${analytics.topCategory.category}`}
-          value={analytics.topCategory.amount}
-        />
-        <InsightCard
-          title="Monthly Change"
-          description={`Your expenses ${analytics.expenseChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(analytics.expenseChange).toFixed(1)}% from last month`}
-          trend={analytics.expenseChange > 0 ? 'up' : 'down'}
-        />
-      </div>
-    </div>
-  );
-};
-
-/**
- * STORIES VIEW COMPONENT
- * Wrapped-style animated slides
- */
-const StoriesView = ({ analytics }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const slides = [
+  /* ───────── STORY CONFIGURATION ───────── */
+  const storySlides = [
     {
-      title: "Your Year in Numbers",
-      content: `${analytics.transactionCount} transactions tracked`,
-      highlight: analytics.transactionCount,
-      color: '#6366f1'
+      bg: "bg-black",
+      content: (
+        <div className="flex flex-col items-center justify-center h-full animate-in fade-in duration-1000">
+           <img src="/FundFlow-Favicon.png" className="w-24 h-24 mb-6 animate-pulse" alt="Logo" />
+           <h1 className="text-5xl font-black text-[#06D6A0] tracking-tighter mb-4 text-center">FUNDFLOW WRAPPED</h1>
+           <p className="text-gray-400 text-xl font-medium">Ready to see your year?</p>
+        </div>
+      )
     },
     {
-      title: "You Earned",
-      content: `$${analytics.totalIncome.toLocaleString()}`,
-      highlight: `$${analytics.totalIncome.toLocaleString()}`,
-      color: '#10b981'
+      bg: "bg-[#06D6A0]",
+      content: (
+        <div className="flex flex-col items-center justify-center h-full text-white">
+           <p className="text-3xl font-bold mb-6">You were busy!</p>
+           <div className="relative">
+             <h2 className="text-9xl font-black mb-2 z-10 relative">{analytics.count}</h2>
+             <div className="absolute -inset-4 bg-white/20 blur-2xl rounded-full z-0"></div>
+           </div>
+           <p className="text-2xl opacity-90 mt-4 font-medium uppercase tracking-widest">Transactions Tracked</p>
+        </div>
+      )
     },
     {
-      title: "You Spent",
-      content: `$${analytics.totalExpenses.toLocaleString()}`,
-      highlight: `$${analytics.totalExpenses.toLocaleString()}`,
-      color: '#f59e0b'
+        bg: "bg-[#111827]",
+        content: (
+          <div className="flex flex-col items-center justify-center h-full text-white px-6">
+             <p className="text-2xl font-bold text-red-400 mb-8">Total Money Out</p>
+             <h2 className="text-6xl font-black mb-4 tracking-tight text-center break-all">
+                ${analytics.expenses.toLocaleString()}
+             </h2>
+             <p className="text-gray-400 text-center mt-4">That's a lot of coffees... or rent.</p>
+             <div className="w-full max-w-xs h-2 bg-gray-800 rounded-full overflow-hidden mt-12">
+                <div className="h-full bg-red-500 animate-[width_2s_ease-out]" style={{ width: '100%' }}></div>
+             </div>
+          </div>
+        )
     },
     {
-      title: "Your Top Category",
-      content: analytics.topCategory.category,
-      highlight: `$${analytics.topCategory.amount.toLocaleString()}`,
-      color: '#ec4899'
+        bg: "bg-gradient-to-br from-indigo-600 to-purple-700",
+        content: (
+          <div className="flex flex-col items-center justify-center h-full text-white px-6">
+             <p className="text-xl font-bold opacity-80 mb-10 uppercase tracking-widest">Your Spending Vibe</p>
+             <div className="w-56 h-56 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm mb-8 shadow-2xl border border-white/20">
+                 <span className="text-8xl">🏆</span>
+             </div>
+             <h2 className="text-5xl font-black mb-2 text-center">{analytics.topCategory.label}</h2>
+             <div className="bg-white/20 px-6 py-2 rounded-full mt-4 backdrop-blur-md">
+                <p className="text-2xl font-bold">
+                    ${analytics.topCategory.value.toLocaleString()}
+                </p>
+             </div>
+          </div>
+        )
+    },
+    {
+        bg: "bg-black",
+        content: (
+            <div className="flex flex-col items-center justify-center h-full px-6">
+                <p className="text-white/50 mb-12 text-xl font-medium tracking-widest uppercase">The Verdict</p>
+                <PersonalityBadge type={analytics.personality} />
+            </div>
+        )
     }
   ];
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  /* ───────── STORY CONTROLS ───────── */
+  useEffect(() => {
+    if (showStory) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        if (storyIndex < storySlides.length - 1) {
+          setStoryIndex((prev) => prev + 1);
+        } else {
+          setShowStory(false); // End of story
+          setStoryIndex(0);
+        }
+      }, 5000); 
+    }
+    return () => clearTimeout(timerRef.current);
+  }, [showStory, storyIndex]);
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    if (storyIndex < storySlides.length - 1) setStoryIndex(prev => prev + 1);
+    else setShowStory(false);
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    if (storyIndex > 0) setStoryIndex(prev => prev - 1);
   };
+
+  /* ───────── DASHBOARD CHARTS OPTIONS ───────── */
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { display: false }, y: { display: false } }
+  };
+
+  if (loading) return <LoadingScreen />;
 
   return (
-    <div className="stories-view">
-      <div className="story-slide" style={{ backgroundColor: slides[currentSlide].color }}>
-        <div className="story-content">
-          <h2>{slides[currentSlide].title}</h2>
-          <div className="story-highlight">{slides[currentSlide].highlight}</div>
-          <p>{slides[currentSlide].content}</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-['Lexend_Deca'] transition-colors duration-200">
+        
+      {/* ───────── STORY OVERLAY ───────── */}
+      {showStory && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-0 md:p-8">
+            <div className={`relative w-full h-full md:w-[450px] md:h-[85vh] md:rounded-3xl overflow-hidden shadow-2xl ${storySlides[storyIndex].bg} transition-colors duration-700 border-0 md:border border-white/10`}>
+                
+                <div className="absolute top-4 left-0 right-0 px-4 flex gap-1 z-30">
+                    {storySlides.map((_, idx) => (
+                        <ProgressBar key={idx} active={idx === storyIndex} completed={idx < storyIndex} />
+                    ))}
+                </div>
+
+                <button 
+                    onClick={() => setShowStory(false)} 
+                    className="absolute top-8 right-4 z-30 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full p-2 backdrop-blur-sm transition"
+                >
+                    <X size={20} />
+                </button>
+
+                <div className="absolute inset-0 z-20 flex">
+                    <div className="w-1/3 h-full" onClick={handlePrev}></div>
+                    <div className="w-2/3 h-full" onClick={handleNext}></div>
+                </div>
+
+                <div className="relative z-10 w-full h-full p-0">
+                    {storySlides[storyIndex].content}
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* ───────── COLLAPSIBLE SIDEBAR ───────── */}
+      <aside
+        className={`
+          hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-20
+          bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+          p-6 space-y-6 transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+          <img src="/FundFlow-Favicon.png" className="h-10 w-auto object-contain" alt="FundFlow" />
+          <span className="text-2xl font-bold tracking-tight text-gray-800 dark:text-white">
+            <span className="text-[#06D6A0]">Fund</span>Flow
+          </span>
+        </div>
+        
+        <nav className="flex flex-col space-y-2">
+          {["Dashboard", "Transactions", "Goals", "Social", "Profile", "Wrapped"].map((link) => (
+            <Link
+              key={link}
+              to={`/${link.toLowerCase().replace(/\s/g, "")}`}
+              className={`
+                px-3 py-2 rounded-lg transition text-sm font-medium whitespace-nowrap
+                ${link === 'Wrapped' 
+                  ? 'bg-[#06D6A0] text-white shadow-md' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}
+              `}
+            >
+              {link}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* TOGGLE BUTTON */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className={`
+          hidden md:flex fixed bottom-6 z-30 p-3 rounded-full shadow-lg transition-all duration-300
+          items-center justify-center
+          ${isSidebarOpen 
+            ? "left-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500" 
+            : "left-6 bg-[#06D6A0] text-white hover:scale-110"}
+        `}
+        title={isSidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+      >
+        {isSidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
+      </button>
+
+      {/* ───────── MAIN CONTENT ───────── */}
+      <main 
+        className={`
+          p-6 pb-24 transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? "md:ml-64" : "md:ml-0"}
+        `}
+      >
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <div>
+                <span className="text-[#06D6A0] font-bold tracking-widest uppercase text-xs">Annual Review</span>
+                <h1 className="text-4xl font-black mt-1">Your Wrapped</h1>
+            </div>
+            
+            <button 
+                onClick={() => { setStoryIndex(0); setShowStory(true); }}
+                className="flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full font-bold hover:scale-105 transition shadow-xl"
+            >
+                <Play fill="currentColor" size={18} />
+                Play Story
+            </button>
         </div>
 
-        <div className="story-progress">
-          {slides.map((_, idx) => (
-            <div
-              key={idx}
-              className={`progress-bar ${idx === currentSlide ? 'active' : ''}`}
-            />
+        {/* Hero Card */}
+        <div 
+            onClick={() => { setStoryIndex(0); setShowStory(true); }}
+            className="bg-gradient-to-r from-[#06D6A0] to-teal-600 rounded-3xl p-8 mb-8 text-white shadow-lg relative overflow-hidden group cursor-pointer"
+        >
+             <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold mb-4 border border-white/20">
+                    <Star size={12} fill="currentColor" /> 202X EDITION
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black mb-2">Ready to relive your year?</h2>
+                <p className="opacity-90 max-w-lg text-lg leading-relaxed">
+                    We've crunched the numbers. From your biggest splurges to your smartest savings, see your financial year in review.
+                </p>
+                <div className="mt-8 inline-flex items-center gap-2 bg-white text-[#06D6A0] px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition shadow-lg">
+                    <Play size={18} fill="currentColor" /> Watch Now
+                </div>
+             </div>
+             
+             {/* Decorative Elements */}
+             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition duration-700"></div>
+             <div className="absolute right-10 top-10 w-20 h-20 bg-emerald-400/30 rounded-full blur-xl animate-pulse"></div>
+        </div>
+
+        {/* Grid Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard icon={<Wallet className="text-blue-500" />} label="Total Spent" value={`$${analytics.expenses.toLocaleString()}`} />
+            <StatCard icon={<TrendingUp className="text-green-500" />} label="Total Income" value={`$${analytics.income.toLocaleString()}`} />
+            <StatCard icon={<Award className="text-yellow-500" />} label="Top Category" value={analytics.topCategory.label} sub={`$${analytics.topCategory.value.toLocaleString()}`} />
+            <StatCard icon={<Calendar className="text-purple-500" />} label="Transactions" value={analytics.count} />
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Top Categories Chart */}
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        <Target className="w-5 h-5 text-[#06D6A0]" /> Spending by Category
+                    </h3>
+                </div>
+                <div className="h-64">
+                    {analytics.categories.length > 0 ? (
+                        <Bar 
+                            data={{
+                                labels: analytics.categories.slice(0, 7).map(c => c.label),
+                                datasets: [{
+                                    label: 'Spent',
+                                    data: analytics.categories.slice(0, 7).map(c => c.value),
+                                    backgroundColor: '#06D6A0',
+                                    borderRadius: 6,
+                                    barThickness: 30
+                                }]
+                            }}
+                            options={{ ...commonOptions, responsive: true, maintainAspectRatio: false, scales: { x: { display: true, grid: { display: false }, ticks: { color: '#9ca3af' } } } }}
+                        />
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-gray-400">No data available</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Top Expenses List */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-500" /> Top Categories
+                </h3>
+                <div className="space-y-3">
+                    {analytics.categories.length > 0 ? analytics.categories.slice(0, 5).map((cat, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                                    {i+1}
+                                </div>
+                                <span className="font-medium">{cat.label}</span>
+                            </div>
+                            <span className="font-bold text-gray-900 dark:text-white">${cat.value.toLocaleString()}</span>
+                        </div>
+                    )) : (
+                        <p className="text-gray-400 text-center py-4">No categories found</p>
+                    )}
+                </div>
+            </div>
+        </div>
+
+      </main>
+
+      {/* Mobile Bottom Nav */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="grid grid-cols-5 text-[11px]">
+          {[
+            { label: "Dashboard", icon: Home, to: "/dashboard" },
+            { label: "Transactions", icon: CreditCard, to: "/transactions" },
+            { label: "Goals", icon: Target, to: "/goals" },
+            { label: "Social", icon: Users, to: "/social" },
+            { label: "Profile", icon: User, to: "/profile" },
+          ].map(({ label, icon: Icon, to }) => (
+            <Link
+              key={label}
+              to={to}
+              className="flex flex-col items-center justify-center py-3 transition hover:text-[#06d6a0] text-gray-500 dark:text-gray-400 active:scale-95"
+            >
+              <Icon className="w-5 h-5 mb-0.5" />
+              <span>{label}</span>
+            </Link>
           ))}
         </div>
-      </div>
+      </nav>
 
-      <div className="story-controls">
-        <button onClick={prevSlide} className="story-nav">←</button>
-        <span>{currentSlide + 1} / {slides.length}</span>
-        <button onClick={nextSlide} className="story-nav">→</button>
-      </div>
     </div>
   );
-};
+}
 
-/**
- * GOALS VIEW COMPONENT
- * Progress tracking for financial goals
- */
-const GoalsView = ({ expectations }) => {
-  return (
-    <div className="goals-view">
-      <h2>Your Financial Goals</h2>
-      <div className="goals-grid">
-        {expectations.map(goal => {
-          const progress = (goal.current / goal.target) * 100;
-          const isComplete = progress >= 100;
-
-          return (
-            <div key={goal.id} className="goal-card">
-              <div className="goal-header">
-                <h3>{goal.name}</h3>
-                <span className={`goal-status ${isComplete ? 'complete' : ''}`}>
-                  {isComplete ? '✓ Complete' : 'In Progress'}
-                </span>
-              </div>
-
-              <div className="goal-amounts">
-                <span>${goal.current.toLocaleString()}</span>
-                <span className="target">of ${goal.target.toLocaleString()}</span>
-              </div>
-
-              <div className="progress-bar-container">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${Math.min(progress, 100)}%` }}
-                />
-              </div>
-
-              <div className="goal-percentage">
-                {progress.toFixed(1)}% Complete
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-/**
- * REUSABLE COMPONENTS
- */
-const StatCard = ({ title, value, trend, icon, isNumber = false }) => {
-  const trendClass = trend === 'up' ? 'positive' : trend === 'down' ? 'negative' : 'neutral';
-
-  return (
-    <div className={`stat-card ${trendClass}`}>
-      <div className="stat-icon">{icon}</div>
-      <div className="stat-content">
-        <h4>{title}</h4>
-        <p className="stat-value">
-          {isNumber ? value : `$${value.toLocaleString()}`}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-const InsightCard = ({ title, description, value, trend }) => {
-  return (
-    <div className="insight-card">
-      <h4>{title}</h4>
-      <p>{description}</p>
-      {value && <div className="insight-value">${value.toLocaleString()}</div>}
-    </div>
-  );
-};
-
-/**
- * DONUT CHART COMPONENT
- * Pure CSS/SVG implementation for performance
- */
-const DonutChart = ({ data }) => {
-  const total = data.reduce((sum, item) => sum + item.amount, 0);
-  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
-
-  let currentAngle = 0;
-  const segments = data.map((item, idx) => {
-    const percentage = (item.amount / total) * 100;
-    const angle = (percentage / 100) * 360;
-    const startAngle = currentAngle;
-    currentAngle += angle;
-
-    return {
-      ...item,
-      percentage,
-      startAngle,
-      endAngle: currentAngle,
-      color: colors[idx % colors.length]
-    };
-  });
-
-  return (
-    <div className="donut-chart">
-      <svg viewBox="0 0 200 200" className="donut-svg">
-        <circle cx="100" cy="100" r="80" fill="none" stroke="#e5e7eb" strokeWidth="40" />
-        {segments.map((segment, idx) => {
-          const startRad = (segment.startAngle - 90) * (Math.PI / 180);
-          const endRad = (segment.endAngle - 90) * (Math.PI / 180);
-
-          const x1 = 100 + 80 * Math.cos(startRad);
-          const y1 = 100 + 80 * Math.sin(startRad);
-          const x2 = 100 + 80 * Math.cos(endRad);
-          const y2 = 100 + 80 * Math.sin(endRad);
-
-          const largeArc = segment.percentage > 50 ? 1 : 0;
-
-          return (
-            <path
-              key={idx}
-              d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
-              fill={segment.color}
-              opacity="0.8"
-            />
-          );
-        })}
-      </svg>
-
-      <div className="donut-legend">
-        {segments.map((segment, idx) => (
-          <div key={idx} className="legend-item">
-            <span
-              className="legend-color"
-              style={{ backgroundColor: segment.color }}
-            />
-            <span className="legend-label">{segment.category}</span>
-            <span className="legend-value">${segment.amount.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/**
- * BAR CHART COMPONENT
- * Optimized for monthly trend visualization
- */
-const BarChart = ({ data }) => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const maxValue = Math.max(...data.map(d => Math.max(d.income, d.expenses)));
-
-  return (
-    <div className="bar-chart">
-      {data.map((month, idx) => {
-        const incomeHeight = (month.income / maxValue) * 100;
-        const expenseHeight = (month.expenses / maxValue) * 100;
-
-        return (
-          <div key={idx} className="bar-group">
-            <div className="bars">
-              <div
-                className="bar income"
-                style={{ height: `${incomeHeight}%` }}
-                title={`Income: $${month.income.toLocaleString()}`}
-              />
-              <div
-                className="bar expense"
-                style={{ height: `${expenseHeight}%` }}
-                title={`Expenses: $${month.expenses.toLocaleString()}`}
-              />
-            </div>
-            <span className="bar-label">{months[month.month]}</span>
-          </div>
-        );
-      })}
-
-      <div className="chart-legend">
-        <div className="legend-item">
-          <span className="legend-color income"></span>
-          <span>Income</span>
+const StatCard = ({ icon, label, value, sub }) => (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-start gap-4 hover:-translate-y-1 transition duration-300">
+        <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">{icon}</div>
+        <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{label}</p>
+            <h3 className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{value}</h3>
+            {sub && <p className="text-xs text-[#06D6A0] font-bold mt-1">{sub}</p>}
         </div>
-        <div className="legend-item">
-          <span className="legend-color expense"></span>
-          <span>Expenses</span>
-        </div>
-      </div>
     </div>
-  );
-};
-
-export default FinanceTracker;
+);

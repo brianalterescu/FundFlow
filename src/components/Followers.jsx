@@ -10,8 +10,8 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
-import "../styles/Followers.css";
-import "../styles/Profile.css";
+// import "../styles/Followers.css";
+// import "../styles/Profile.css";
 
 
 export default function Followers() {
@@ -76,140 +76,187 @@ export default function Followers() {
     loadPeople();
   }, [currentUser, mode]);
 
-  
-    // Block / Unblock handlers
-    const handleBlock = async () => {
-      if (!currentUser) return;
-      try {
-        // Remove any follow relationships between these two users
-        const followsRef = collection(db, "follows");
-        const qFollows = query(
-          followsRef,
-          where("followerID", "in", [currentUser.uid, uid]),
-          where("followedID", "in", [currentUser.uid, uid])
-        );
-        const followSnap = await getDocs(qFollows);
-        followSnap.forEach(async (docSnap) => await deleteDoc(docSnap.ref));
-        setIsFollowing(false);
-  
-        // Create block
-        const q = query(
-          collection(db, "blocks"),
-          where("blockerId", "==", currentUser.uid),
-          where("blockedId", "==", uid)
-        );
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) return;
-  
-        await addDoc(collection(db, "blocks"), {
-          blockerId: currentUser.uid,
-          blockedId: uid,
-          blockedAt: serverTimestamp(),
-        });
-        setIsBlocked(true);
-  
-      } catch (err) {
-        console.error("Error blocking user:", err);
-      }
-    };
+
+  // Block / Unblock handlers
+  const handleBlock = async () => {
+    if (!currentUser) return;
+    try {
+      // Remove any follow relationships between these two users
+      const followsRef = collection(db, "follows");
+      const qFollows = query(
+        followsRef,
+        where("followerID", "in", [currentUser.uid, uid]),
+        where("followedID", "in", [currentUser.uid, uid])
+      );
+      const followSnap = await getDocs(qFollows);
+      followSnap.forEach(async (docSnap) => await deleteDoc(docSnap.ref));
+      setIsFollowing(false);
+
+      // Create block
+      const q = query(
+        collection(db, "blocks"),
+        where("blockerId", "==", currentUser.uid),
+        where("blockedId", "==", uid)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) return;
+
+      await addDoc(collection(db, "blocks"), {
+        blockerId: currentUser.uid,
+        blockedId: uid,
+        blockedAt: serverTimestamp(),
+      });
+      setIsBlocked(true);
+
+    } catch (err) {
+      console.error("Error blocking user:", err);
+    }
+  };
   const displayName = (u) =>
     u?.name || u?.displayName || "Unknown User";
 
   return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
 
-    
-    
-    
-    <div className="page-container">
-      <header className="header-bar">
-    <div className="logo"> <img src="./FundFlowLogo2.png" href="/" width={"100%rem"} height={"100%em"}></img></div>
-        <nav className="nav-links">
-          <Link to="/dashboard" className="nav-btn">Dashboard</Link>
-          <Link to="/transactions" className="nav-btn">Transactions</Link>
-          <Link to="/goals" className="nav-btn">Goals</Link>
-          <Link to="/searchUser" className="nav-btn">Social</Link> 
-          <Link to="/connections" className="nav-btn">Connections</Link>
-          <Link to="/profile" className="nav-btn">Profile</Link>
-        </nav>
+      {/* HEADER */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img
+              src="./FundFlow-Favicon.png"
+              alt="FundFlow Logo"
+              className="h-8 w-auto"
+            />
+            <span className="text-xl font-semibold text-[#000]">
+              <span className="text-[#06D6A0] font-bold">Fund</span>Flow
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link to="/dashboard" className="hover:text-[#06d6a0]">Dashboard</Link>
+            <Link to="/transactions" className="hover:text-[#06d6a0]">Transactions</Link>
+            <Link to="/goals" className="hover:text-[#06d6a0]">Goals</Link>
+            <Link to="/users" className="hover:text-[#06d6a0]">Social</Link>
+            <Link to="/profile" className="hover:text-[#06d6a0]">Profile</Link>
+          </nav>
+        </div>
       </header>
 
-       <div className="header-spacer" />
+      {/* HEADER SPACER */}
+      <div className="h-16" />
 
-      <div className="followers-page"> 
-        <header className="followers-header">
-          <h1>Connections</h1>
-          <div className="followers-toggle"> {/* Lets you switch between views for followers, following, and blocked users */}
-            <button
-              className={mode === "followers" ? "active" : ""} 
-              onClick={() => setMode("followers")}
-            >
-              Followers
-            </button>
-            <button
-              className={mode === "following" ? "active" : ""}
-              onClick={() => setMode("following")}
-            >
-              Following
-            </button>
+      {/* MAIN CONTENT */}
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
+        {/* PAGE HEADER */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold">Connections</h1>
+
+          {/* TOGGLE */}
+          <div className="flex rounded-lg bg-gray-200 dark:bg-gray-700 p-1 text-sm">
+            {["followers", "following"].map((key) => (
               <button
-              className={mode === "blocked" ? "active" : ""} 
-              onClick={() => setMode("blocked")}
-            >
-              Blocked
-            </button>
+                key={key}
+                onClick={() => setMode(key)}
+                className={`px-4 py-2 rounded-md transition font-medium
+              ${mode === key
+                    ? "bg-white dark:bg-gray-900 text-[#06d6a0] shadow"
+                    : "text-gray-600 dark:text-gray-300 hover:text-[#06d6a0]"
+                  }`}
+              >
+                {key.charAt(0).toUpperCase() + key.slice(1)}
+              </button>
+            ))}
           </div>
-        </header>
+        </div>
 
-        {loading && <p>Loading...</p>}
-        {error && <p className="error">{error}</p>}
+        {/* STATES */}
+        {loading && (
+          <p className="text-center text-gray-500">Loading...</p>
+        )}
 
+        {error && (
+          <p className="text-center text-red-500">{error}</p>
+        )}
+
+        {/* LIST */}
         {!loading && !error && (
-          <ul className="followers-list"> {/*for empty lists */}
+          <ul className="bg-white dark:bg-gray-800 rounded-2xl shadow divide-y divide-gray-200 dark:divide-gray-700">
+
             {people.length === 0 && (
-              <li className="empty">
+              <li className="p-6 text-center text-gray-500">
                 {mode === "followers"
                   ? "No one is following you yet."
-                  : "You're not following anyone yet."}
+                  : mode === "following"
+                    ? "You're not following anyone yet."
+                    : "You haven’t blocked anyone."}
               </li>
             )}
 
             {people.map((item) => (
-              <li key={item.id} className="followers-item">
-                <div className="followers-main">
-                  <span className="followers-name">
+              <li
+                key={item.id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                {/* USER INFO */}
+                <div>
+                  <p className="font-semibold">
                     {displayName(item.user)}
-                  </span>
+                  </p>
 
                   {item.user?.email && (
-                    <span className="followers-email">
-                      {item.user.email}
-                    </span>
+                    <p className="text-sm text-gray-500">
+                      {/* {item.user.email} */}
+                    </p>
                   )}
                 </div>
 
-                <Link
-                  to={`/user/${item.otherUserId}`}
-                  className="view-profile-link"
-                >
-                  View Profile
-                </Link>
-                  
-                <Link
-                  to={`/user/${item.otherUserId}`}
-                  className="connections-block-btn"
-                >
-                  Block
-                </Link>
+                {/* ACTIONS */}
+                <div className="flex gap-3 text-sm">
+                  <Link
+                    to={`/user/${item.otherUserId}`}
+                    className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                  >
+                    View Profile
+                  </Link>
+
+                  {mode !== "blocked" && (
+                    <button
+                      className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                    >
+                      Block
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
         )}
+      </main>
 
-        
-      </div>
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <div className="grid grid-cols-5 text-xs">
+          {[
+            { label: "Dashboard", icon: "🏠", to: "/dashboard" },
+            { label: "Tx", icon: "💸", to: "/transactions" },
+            { label: "Goals", icon: "🎯", to: "/goals" },
+            { label: "Social", icon: "👥", to: "/users" },
+            { label: "Profile", icon: "👤", to: "/profile" },
+          ].map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="flex flex-col items-center justify-center py-2 text-gray-600 dark:text-gray-300 hover:text-[#06d6a0]"
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
 
-      
     </div>
+
   );
 }

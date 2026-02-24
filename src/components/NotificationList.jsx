@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import '../styles/notifications.css';
+// import '../styles/notifications.css';
 
 const NotificationList = ({ notifications, onClose }) => {
   if (!notifications || notifications.length === 0) {
