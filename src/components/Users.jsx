@@ -75,7 +75,7 @@ function SearchUsers() {
     }
   };
 
-  const navLinks = [ "Dashboard", "Transactions", "Goals", "Connections", "Users", "Social", "Profile", "Wrapped" ];
+  const NAV_LINKS = [ "Dashboard", "Transactions", "Budget", "Goals", "Connections", "Users", "Social", "Profile", "Wrapped" ];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-['Lexend_Deca'] transition-colors duration-200">
@@ -97,7 +97,7 @@ function SearchUsers() {
         </div>
         
         <nav className="flex flex-col space-y-2">
-          {navLinks.map((link) => (
+          {NAV_LINKS.map((link) => (
             <Link
               key={link}
               to={`/${link.toLowerCase().replace(/\s/g, "")}`}
@@ -144,7 +144,7 @@ function SearchUsers() {
 
       {mobileMenuOpen && (
         <div className="md:hidden fixed top-16 inset-x-0 bg-white dark:bg-gray-800 p-4 space-y-2 z-40 shadow-lg border-b border-gray-200 dark:border-gray-700">
-          {navLinks.map((link) => (
+          {NAV_LINKS.map((link) => (
             <Link
               key={link}
               to={`/${link.toLowerCase().replace(/\s/g, "")}`}

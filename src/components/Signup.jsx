@@ -9,7 +9,12 @@ import {
   Sparkles,
   ChevronLeft
 } from "lucide-react";
-
+import { auth, provider, db } from "../firebaseConfig.js";
+import {
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 // SEO Metadata (Can be moved to Helmet)
 const SEO_TITLE = "Sign Up | FundFlow";
 const SEO_DESC = "Create your free FundFlow account today. The secure, manual personal finance tracker designed to help you take control of your money.";
@@ -27,15 +32,32 @@ export default function SignUp() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  const handleSignUp = async (e) => {
+const handleSignUp = async (e) => {
     e.preventDefault();
+    if (formData.password !== formData.passwordRepeat) return alert("Passwords do not match!");
     setIsLoading(true);
-    // TODO: Hook up your Firebase createUserWithEmailAndPassword here
-    setTimeout(() => {
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const newUser = userCredential.user;
+
+      await setDoc(doc(db, "users", newUser.uid), {
+        uid: newUser.uid,
+        email: newUser.email,
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        picURL: "https://i.imgur.com/1xAP7pJ.png", 
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+      navigate("/onboarding"); 
+    } catch (error) {
+      console.error("Signup Error:", error);
+      alert(error.message);
+    } finally {
       setIsLoading(false);
-      // navigate("/onboarding"); 
-    }, 1500);
+    }
   };
 
   return (
@@ -113,79 +135,147 @@ export default function SignUp() {
           </div>
 
           {/* Email/Password Form */}
-          <form onSubmit={handleSignUp} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  placeholder="John Doe"
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
-                />
-              </div>
-            </div>
+         <form onSubmit={handleSignUp} className="space-y-5">
+  {/* First & Last Name Grid */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* First Name */}
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">First Name</label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <User className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          name="firstName"
+          value={formData.firstName}
+          onChange={handleChange}
+          required
+          placeholder="John"
+          className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
+        />
+      </div>
+    </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  placeholder="you@example.com"
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
-                />
-              </div>
-            </div>
+    {/* Last Name */}
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <User className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          name="lastName"
+          value={formData.lastName}
+          onChange={handleChange}
+          required
+          placeholder="Pork"
+          className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
+        />
+      </div>
+    </div>
+  </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  placeholder="••••••••"
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
-                />
-              </div>
-              {/* Password strength visual indicator (UI only for now) */}
-              <div className="flex gap-1 mt-2">
-                <div className={`h-1 flex-1 rounded-full ${formData.password.length > 0 ? 'bg-red-400' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-                <div className={`h-1 flex-1 rounded-full ${formData.password.length > 5 ? 'bg-amber-400' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-                <div className={`h-1 flex-1 rounded-full ${formData.password.length > 8 ? 'bg-[#06D6A0]' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-              </div>
-            </div>
+  {/* Email Address */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <Mail className="h-5 w-5 text-gray-400" />
+      </div>
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        required
+        placeholder="you@example.com"
+        className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
+      />
+    </div>
+  </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#06D6A0] hover:bg-[#05b588] text-white font-bold rounded-xl shadow-lg shadow-[#06D6A0]/20 hover:shadow-[#06D6A0]/40 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-            >
-              {isLoading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>Create Account <ArrowRight size={18} /></>
-              )}
-            </button>
-          </form>
+  {/* Password */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <Lock className="h-5 w-5 text-gray-400" />
+      </div>
+      <input
+        type="password"
+        name="password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+        placeholder="••••••••"
+        className="block w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#06D6A0] focus:border-transparent outline-none transition-all"
+      />
+    </div>
+    {/* Password strength visual indicator */}
+    <div className="flex gap-1 mt-2">
+      <div className={`h-1 flex-1 rounded-full ${formData.password.length > 0 ? 'bg-red-400' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+      <div className={`h-1 flex-1 rounded-full ${formData.password.length > 5 ? 'bg-amber-400' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+      <div className={`h-1 flex-1 rounded-full ${formData.password.length > 8 ? 'bg-[#06D6A0]' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+    </div>
+  </div>
+
+  {/* Confirm Password */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <ShieldCheck className="h-5 w-5 text-gray-400" />
+      </div>
+      <input
+        type="password"
+        name="passwordRepeat"
+        value={formData.passwordRepeat}
+        onChange={handleChange}
+        required
+        placeholder="••••••••"
+        className={`block w-full pl-11 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white focus:ring-2 focus:border-transparent outline-none transition-all ${
+          formData.passwordRepeat && formData.password !== formData.passwordRepeat 
+          ? 'border-red-400 focus:ring-red-400' 
+          : 'border-gray-200 dark:border-gray-700 focus:ring-[#06D6A0]'
+        }`}
+      />
+    </div>
+    {formData.passwordRepeat && formData.password !== formData.passwordRepeat && (
+      <p className="text-xs text-red-500 mt-1 ml-1 font-medium">Passwords do not match</p>
+    )}
+  </div>
+
+  {/* Remember Me */}
+  <div className="flex items-center justify-between">
+    <div className="flex items-center">
+      <input
+        id="remember-me"
+        name="remember"
+        type="checkbox"
+        checked={formData.remember}
+        onChange={handleChange}
+        className="h-4 w-4 text-[#06D6A0] focus:ring-[#06D6A0] border-gray-300 dark:border-gray-700 rounded cursor-pointer"
+      />
+      <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+        Remember me
+      </label>
+    </div>
+  </div>
+
+  <button
+    type="submit"
+    disabled={isLoading || (formData.password !== formData.passwordRepeat)}
+    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#06D6A0] hover:bg-[#05b588] text-white font-bold rounded-xl shadow-lg shadow-[#06D6A0]/20 hover:shadow-[#06D6A0]/40 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+  >
+    {isLoading ? (
+      <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+    ) : (
+      <>Create Account <ArrowRight size={18} /></>
+    )}
+  </button>
+</form>
 
           <p className="mt-8 text-center text-gray-600 dark:text-gray-400 text-sm font-medium">
             Already have an account?{" "}

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Home2.css"; // Keep your global styling
-import { 
-  Mail, 
-  Lock, 
-  ArrowRight, 
+import {
+  Mail,
+  Lock,
+  ArrowRight,
   ChevronLeft,
   TrendingUp,
   PieChart,
@@ -13,10 +13,10 @@ import {
 
 // --- FIREBASE IMPORTS ---
 import { auth, db } from "../firebaseConfig";
-import { 
-  signInWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider 
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
@@ -47,12 +47,12 @@ export default function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      
+
       // Update last login timestamp
       const userRef = doc(db, "users", auth.currentUser.uid);
       await updateDoc(userRef, { lastLogin: serverTimestamp() });
 
-      navigate("/dashboard"); 
+      navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
       setError("Invalid email or password. Please try again.");
@@ -65,7 +65,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError("");
-    
+
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -104,13 +104,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex font-['Lexend_Deca'] bg-white dark:bg-[#0b0f19] text-gray-900 dark:text-gray-100 selection:bg-[#06D6A0] selection:text-white">
-      
+
       <h1 className="sr-only">{SEO_TITLE}</h1>
       <p className="sr-only">{SEO_DESC}</p>
 
       {/* --- LEFT PANEL: THE FORM --- */}
       <div className="w-full lg:w-1/2 flex flex-col px-6 sm:px-12 md:px-20 lg:px-24 py-10 justify-center relative">
-        
+
         {/* Back to Home */}
         <Link to="/" className="absolute top-8 left-6 sm:left-12 flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#06D6A0] transition-colors">
           <ChevronLeft size={16} /> Back to Home
@@ -139,11 +139,12 @@ export default function Login() {
           {/* Social Auth Buttons */}
           <div className="space-y-3 mb-8">
             {/* Active Google Button */}
-            <button 
-              type="button" 
+            {/* Active Google Button */}
+            <button
+              type="button"
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -153,12 +154,11 @@ export default function Login() {
               </svg>
               Log in with Google
             </button>
-
             <div className="grid grid-cols-2 gap-3">
               {/* Apple (Coming Soon) */}
               <button disabled type="button" className="relative flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed group overflow-hidden">
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.15 2.95.97 3.81 2.26-3.1 1.83-2.58 6.02.6 7.22-.64 1.57-1.54 3.25-3.06 3.53zM12.03 6.94c-.16-2.57 2.18-4.77 4.54-4.94.34 2.76-2.4 4.96-4.54 4.94z"/>
+                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.15 2.95.97 3.81 2.26-3.1 1.83-2.58 6.02.6 7.22-.64 1.57-1.54 3.25-3.06 3.53zM12.03 6.94c-.16-2.57 2.18-4.77 4.54-4.94.34 2.76-2.4 4.96-4.54 4.94z" />
                 </svg>
                 Apple
                 <div className="absolute inset-0 bg-white/60 dark:bg-black/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -169,10 +169,10 @@ export default function Login() {
               {/* Microsoft (Coming Soon) */}
               <button disabled type="button" className="relative flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed group overflow-hidden">
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#F25022" d="M1 1h10v10H1z"/>
-                  <path fill="#7FBA00" d="M13 1h10v10H13z"/>
-                  <path fill="#00A4EF" d="M1 13h10v10H1z"/>
-                  <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                  <path fill="#F25022" d="M1 1h10v10H1z" />
+                  <path fill="#7FBA00" d="M13 1h10v10H13z" />
+                  <path fill="#00A4EF" d="M1 13h10v10H1z" />
+                  <path fill="#FFB900" d="M13 13h10v10H13z" />
                 </svg>
                 Microsoft
                 <div className="absolute inset-0 bg-white/60 dark:bg-black/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -255,7 +255,7 @@ export default function Login() {
 
       {/* --- RIGHT PANEL: DASHBOARD TEASER --- */}
       <div className="hidden lg:flex w-1/2 bg-gray-50 dark:bg-gray-900 relative items-center justify-center p-12 overflow-hidden border-l border-gray-200 dark:border-gray-800">
-        
+
         {/* Background Decorative Gradients */}
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[100px] translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#06D6A0]/10 rounded-full blur-[100px] -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
@@ -268,7 +268,7 @@ export default function Login() {
 
           {/* Glass Mockup Cards */}
           <div className="space-y-6">
-            
+
             {/* Mock Stat Card 1 */}
             <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 shadow-xl transform rotate-1 hover:rotate-0 transition-transform duration-500 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
               <div className="flex items-center justify-between mb-4">

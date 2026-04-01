@@ -25,6 +25,7 @@ import AdvancedScriptPanel from "./components/AdvancedScriptPanel.jsx"; // New i
 import Learn from "./components/Learn.jsx";
 import TermsOfService from "./components/TermsOfService.jsx";
 import Onboarding from "./components/Onboarding.jsx";
+import Budget from "./components/Budget.jsx";
 // import LoadingProvider from "./components/LoadingContext.jsx";
 // Common commands to get hosting working
 // npm install firebase
@@ -42,7 +43,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/user/:uid" element={<ViewProfile />} />
-      <Route path="/edit-picture" element={<EditPicture />} />
+      <Route path="/editpicture" element={<EditPicture />} />
       <Route path="/goals" element={<Goals />} />
       <Route path="/transactions" element={<Transactions />} />
       <Route path="/features" element={<Features />} />
@@ -56,6 +57,7 @@ function App() {
       <Route path="/learn" element={<Learn />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/budget" element={<Budget />} />
     </Routes>
   );
 }

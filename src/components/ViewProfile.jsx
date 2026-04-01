@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import {
   collection,
   query,
@@ -15,36 +15,71 @@ import { db, auth } from "../firebaseConfig";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
 // Icons
-import { 
-  Home, CreditCard, Target, Users, User, ChevronLeft, Menu, Share2, Shield, UserPlus, UserMinus, MessageSquare
+import {
+  Home, CreditCard, Target, Users, User, Share2, Shield, UserPlus, UserMinus, MessageSquare, 
+  LogOut, Activity, Sparkles, TrendingUp, Link as LinkIcon, ArrowLeft
 } from "lucide-react";
-import { HiX } from "react-icons/hi";
 
 export default function ViewProfile() {
   const { uid } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [userData, setUserData] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [profile, setProfile] = useState({});
   const [loading, setLoading] = useState(true);
+  
   const [isBlocked, setIsBlocked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  
   const [transactionCount, setTransactionCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
-  // Sidebar State
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const DEFAULT_PIC = "https://i.imgur.com/1xAP7pJ.png";
 
-  // AUTH LISTENER
+  // AUTH LISTENER & LOGGED-IN USER PROFILE
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) navigate("/login");
-      else setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        navigate("/login");
+      } else {
+        setCurrentUser(user);
+        const docSnap = await getDoc(doc(db, "users", user.uid));
+        if (docSnap.exists()) setProfile(docSnap.data());
+      }
     });
     return () => unsubscribe();
   }, [navigate]);
 
-  // LOAD PROFILE & RELATIONSHIPS
+  // Fetch Follower & Following Counts
+  useEffect(() => {
+    if (!uid) return;
+
+    const fetchFollowStats = async () => {
+      try {
+        const followsRef = collection(db, "follows");
+
+        // Count Followers
+        const followersQuery = query(followsRef, where("followedID", "==", uid));
+        const followersSnap = await getDocs(followersQuery);
+        setFollowersCount(followersSnap.size);
+
+        // Count Following
+        const followingQuery = query(followsRef, where("followerID", "==", uid));
+        const followingSnap = await getDocs(followingQuery);
+        setFollowingCount(followingSnap.size);
+
+      } catch (error) {
+        console.error("Error fetching follow stats:", error);
+      }
+    };
+
+    fetchFollowStats();
+  }, [uid]);
+
+  // LOAD TARGET PROFILE & RELATIONSHIPS
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!uid) return navigate("/users");
@@ -64,16 +99,16 @@ export default function ViewProfile() {
         // 2. LOAD USER DATA
         const docRef = doc(db, "users", uid);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUserData({
-                ...data,
-                picURL: data.picURL || "https://i.imgur.com/1xAP7pJ.png",
-                aboutMe: data.aboutMe || "This user hasn't written a bio yet.", // Default bio
-            });
+          const data = docSnap.data();
+          setUserData({
+            ...data,
+            picURL: data.picURL || DEFAULT_PIC,
+            aboutMe: data.aboutMe || "This user hasn't written a bio yet.", 
+          });
         } else {
-            setUserData(null);
+          setUserData(null);
         }
 
         // 3. LOAD STATS (Transactions Count)
@@ -99,7 +134,7 @@ export default function ViewProfile() {
       }
     };
 
-    if(currentUser) loadUserProfile();
+    if (currentUser) loadUserProfile();
   }, [uid, currentUser, navigate]);
 
   // HANDLERS
@@ -118,6 +153,7 @@ export default function ViewProfile() {
         followedAt: serverTimestamp(),
       });
       setIsFollowing(true);
+      setFollowersCount(prev => prev + 1);
     } catch (err) { console.error(err); }
   };
 
@@ -127,20 +163,19 @@ export default function ViewProfile() {
       const snap = await getDocs(q);
       snap.forEach(async (d) => deleteDoc(d.ref));
       setIsFollowing(false);
+      setFollowersCount(prev => Math.max(0, prev - 1));
     } catch (err) { console.error(err); }
   };
 
   const handleBlock = async () => {
-    if(!window.confirm("Block this user? You won't see their posts or profile.")) return;
+    if (!window.confirm("Block this user? You won't see their posts or profile.")) return;
     try {
-      // Remove follow relationships first
       const followsRef = collection(db, "follows");
       const qFollows = query(followsRef, where("followerID", "in", [currentUser.uid, uid]), where("followedID", "in", [currentUser.uid, uid]));
       const followSnap = await getDocs(qFollows);
       followSnap.forEach(async (d) => deleteDoc(d.ref));
       setIsFollowing(false);
 
-      // Create Block
       await addDoc(collection(db, "blocks"), {
         blockerId: currentUser.uid,
         blockedId: uid,
@@ -159,224 +194,227 @@ export default function ViewProfile() {
     } catch (err) { console.error(err); }
   };
 
-  const navLinks = [ "Dashboard", "Transactions", "Goals", "Connections", "Users", "Social", "Profile", "Wrapped" ];
+  const NAV_LINKS = [
+    { name: "Dashboard", path: "/dashboard", icon: Home },
+    { name: "Transactions", path: "/transactions", icon: CreditCard },
+    { name: "Goals", path: "/goals", icon: Target },
+    { name: "Connections", path: "/connections", icon: LinkIcon },
+    { name: "Users", path: "/users", icon: Users },
+    { name: "Social Feed", path: "/social", icon: MessageSquare },
+    { name: "CSV Uploading", path: "/csvuploading", icon: Activity },
+    { name: "Profile", path: "/profile", icon: User },
+    { name: "Income Forecast", path: "/forecast", icon: TrendingUp },
+    { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+  ];
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-500">Loading...</div>;
-  if (!userData) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-500">User not found.</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0b0f19]">
+        <div className="w-8 h-8 border-4 border-[#06D6A0] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0b0f19] text-gray-500 font-bold">
+        User not found.
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-['Lexend_Deca'] transition-colors duration-200">
-
-      {/* ───────── SIDEBAR ───────── */}
-      <aside
-        className={`
-          hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-20
-          bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-          p-6 space-y-6 transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
-      >
-        <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-          <img src="/FundFlow-Favicon.png" className="h-10 w-auto object-contain" alt="FundFlow" />
-          <span className="text-2xl font-bold tracking-tight text-gray-800 dark:text-white">
+    <div className="flex h-screen bg-gray-50 dark:bg-[#0b0f19] text-gray-900 dark:text-white font-['Lexend_Deca'] overflow-hidden dark:[color-scheme:dark]">
+      
+      {/* SIDEBAR */}
+      <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-full z-20 shadow-sm flex-shrink-0">
+        <div className="p-6 flex items-center gap-2">
+          <img src="/FundFlow-Favicon.png" alt="Logo" className="h-8 w-8" />
+          <span className="text-xl font-black tracking-tight">
             <span className="text-[#06D6A0]">Fund</span>Flow
           </span>
         </div>
-        <nav className="flex flex-col space-y-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link}
-              to={`/${link.toLowerCase().replace(/\s/g, "")}`}
-              className={`
-                px-3 py-2 rounded-lg transition text-sm font-medium whitespace-nowrap
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200
-              `}
-            >
-              {link}
-            </Link>
-          ))}
+
+        <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto no-scrollbar">
+          {NAV_LINKS.map((link) => {
+            // Highlight 'Users' tab since we are viewing a user
+            const isActive = link.path === '/users'; 
+            return (
+              <Link key={link.name} to={link.path} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${isActive ? "bg-[#06D6A0]/10 text-[#06D6A0]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"}`}>
+                <link.icon size={18} className={isActive ? "text-[#06D6A0]" : ""} />
+                <span className="text-sm">{link.name}</span>
+              </Link>
+            );
+          })}
         </nav>
+
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+          <button onClick={() => signOut(auth).then(()=>navigate('/login'))} className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
       </aside>
 
-      {/* TOGGLE BUTTON */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`
-          hidden md:flex fixed bottom-6 z-30 p-3 rounded-full shadow-lg transition-all duration-300
-          items-center justify-center
-          ${isSidebarOpen 
-            ? "left-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500" 
-            : "left-6 bg-[#06D6A0] text-white hover:scale-110"}
-        `}
-      >
-        {isSidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
-      </button>
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        {/* HEADER */}
+        <header className="h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 lg:px-10 z-10 sticky top-0 flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+              <ArrowLeft size={18} />
+            </button>
+            <h1 className="text-2xl font-black tracking-tight">View Profile</h1>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <img src={profile?.picURL || currentUser?.photoURL || DEFAULT_PIC} alt="My Avatar" className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 object-cover shadow-sm" />
+          </div>
+        </header>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 p-4 flex justify-between items-center z-50 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <img src="/FundFlow-Favicon.png" alt="Logo" className="h-8 w-auto" />
-          <span className="text-xl font-bold text-gray-800 dark:text-white">
-            <span className="text-[#06D6A0]">Fund</span>Flow
-          </span>
-        </div>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? <HiX className="text-2xl dark:text-white" /> : <Menu className="text-2xl dark:text-white" />}
-        </button>
-      </div>
+        {/* SCROLLABLE CONTENT */}
+        <main className="flex-1 overflow-y-auto p-6 lg:p-10">
+          <div className="max-w-4xl mx-auto space-y-6 pb-24 md:pb-8">
 
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed top-16 inset-x-0 bg-white dark:bg-gray-800 p-4 space-y-2 z-40 shadow-lg border-b border-gray-200 dark:border-gray-700">
-          {navLinks.map((link) => (
-            <Link
-              key={link}
-              to={`/${link.toLowerCase().replace(/\s/g, "")}`}
-              className="block px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {link}
-            </Link>
-          ))}
-        </div>
-      )}
+            {/* HEADER CARD */}
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="h-32 bg-gradient-to-r from-[#06D6A0] to-blue-500 relative overflow-hidden">
+                 <div className="absolute inset-0 bg-white/20 dark:bg-black/20 mix-blend-overlay"></div>
+              </div>
 
-      {/* ───────── MAIN CONTENT ───────── */}
-      <main 
-        className={`
-          flex-1 p-6 mt-16 md:mt-0 pb-24 transition-all duration-300 ease-in-out
-          ${isSidebarOpen ? "md:ml-64" : "md:ml-0"}
-        `}
-      >
-        <div className="max-w-4xl mx-auto">
-            
-            {/* Header Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
-                <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-                
-                <div className="px-8 pb-8">
-                    <div className="flex flex-col md:flex-row items-center md:items-end -mt-12 mb-6 gap-6">
-                        <img
-                            src={userData.picURL}
-                            alt="Profile"
-                            className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-md bg-white"
-                        />
+              <div className="px-6 sm:px-8 pb-8">
+                <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-12 mb-6 gap-4 sm:gap-6">
+                  
+                  <img
+                    src={userData.picURL}
+                    alt="Profile"
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg bg-gray-100 dark:bg-gray-900 z-10"
+                    onError={(e) => (e.target.src = DEFAULT_PIC)}
+                  />
 
-                        <div className="flex-1 text-center md:text-left">
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                                {userData.name || "Unknown User"}
-                            </h1>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                Joined {userData.createdAt?.seconds ? new Date(userData.createdAt.seconds * 1000).getFullYear() : "Recently"}
-                            </p>
-                        </div>
+                  <div className="flex-1 text-center sm:text-left z-10 pt-2 sm:pt-0">
+                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                      {userData.name || "Unknown User"}
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-1">
+                      Joined {userData.createdAt?.seconds ? new Date(userData.createdAt.seconds * 1000).getFullYear() : "Recently"}
+                    </p>
+                  </div>
 
-                        {/* Action Buttons */}
-                        {!isBlocked && (
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={handleCopyProfileUrl}
-                                    className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                                    title="Share Profile"
-                                >
-                                    <Share2 size={20} />
-                                </button>
-                                <button 
-                                    onClick={isFollowing ? handleUnfollow : handleFollow}
-                                    className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-white transition shadow-md ${
-                                        isFollowing 
-                                        ? "bg-gray-800 dark:bg-gray-700 hover:bg-gray-900" 
-                                        : "bg-[#06D6A0] hover:bg-[#05b588]"
-                                    }`}
-                                >
-                                    {isFollowing ? <UserMinus size={18} /> : <UserPlus size={18} />}
-                                    {isFollowing ? "Unfollow" : "Follow"}
-                                </button>
-                            </div>
-                        )}
+                  {/* ACTION BUTTONS */}
+                  {!isBlocked && currentUser.uid !== uid && (
+                    <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                      <button
+                        onClick={handleCopyProfileUrl}
+                        className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                        title="Share Profile"
+                      >
+                        <Share2 size={20} />
+                      </button>
+                      
+                      <button
+                        onClick={isFollowing ? handleUnfollow : handleFollow}
+                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition shadow-lg active:scale-[0.98] ${
+                          isFollowing
+                            ? "bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 shadow-gray-900/20"
+                            : "bg-[#06D6A0] hover:bg-[#05b588] shadow-[#06D6A0]/20"
+                        }`}
+                      >
+                        {isFollowing ? <UserMinus size={18} /> : <UserPlus size={18} />}
+                        {isFollowing ? "Unfollow" : "Follow"}
+                      </button>
                     </div>
-
-                    {/* Stats Row (Placeholders for Follows until implemented) */}
-                    {!isBlocked && (
-                        <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700 pt-6">
-                            <div className="text-center px-4">
-                                <span className="block text-2xl font-bold text-gray-900 dark:text-white">-</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">Followers</span>
-                            </div>
-                            <div className="text-center px-4">
-                                <span className="block text-2xl font-bold text-gray-900 dark:text-white">-</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">Following</span>
-                            </div>
-                            <div className="text-center px-4">
-                                <span className="block text-2xl font-bold text-[#06D6A0]">
-                                    {transactionCount.toLocaleString()}
-                                </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">Transactions</span>
-                            </div>
-                        </div>
-                    )}
+                  )}
                 </div>
+
+                {/* STATS ROW */}
+                {!isBlocked && (
+                  <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-gray-700 border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
+                    <div className="text-center px-2">
+                      <span className="block text-2xl font-black text-gray-900 dark:text-white">
+                        {followersCount.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1 block">Followers</span>
+                    </div>
+                    <div className="text-center px-2">
+                      <span className="block text-2xl font-black text-gray-900 dark:text-white">
+                        {followingCount.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1 block">Following</span>
+                    </div>
+                    <div className="text-center px-2">
+                      <span className="block text-2xl font-black text-[#06D6A0]">
+                        {transactionCount.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1 block">Transactions</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* CONTENT AREA */}
             {isBlocked ? (
-                <div className="p-8 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-2xl text-center">
-                    <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-red-600 dark:text-red-400">This user is blocked</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">You cannot see their profile details or activity.</p>
-                    <button 
-                        onClick={handleUnblock}
-                        className="px-6 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                    >
-                        Unblock User
-                    </button>
+              <div className="p-10 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-3xl text-center flex flex-col items-center">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4">
+                  <Shield size={32} />
                 </div>
+                <h3 className="text-xl font-black text-red-600 dark:text-red-400 mb-2">User Blocked</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-sm">You cannot see their profile details, activity, or interact with them.</p>
+                <button
+                  onClick={handleUnblock}
+                  className="px-8 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition active:scale-[0.98]"
+                >
+                  Unblock User
+                </button>
+              </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* About Me Section */}
-                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                            <User className="w-5 h-5 text-[#06D6A0]" /> About
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                            {userData.aboutMe}
-                        </p>
-                    </div>
-
-                    {/* Actions / Danger Zone */}
-                    <div className="space-y-6">
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Actions</h3>
-                            <button 
-                                onClick={handleBlock}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                            >
-                                <Shield size={16} /> Block User
-                            </button>
-                        </div>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* About Me Section */}
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-[#06D6A0]" /> About
+                  </h3>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                      {userData.aboutMe}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Actions / Danger Zone */}
+                {currentUser.uid !== uid && (
+                  <div className="space-y-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Privacy Actions</h3>
+                      <button
+                        onClick={handleBlock}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition active:scale-[0.98]"
+                      >
+                        <Shield size={18} /> Block User
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
 
       {/* MOBILE BOTTOM NAV */}
-      <nav className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-        <div className="grid grid-cols-5 text-[11px]">
-          {[
-            { label: "Dashboard", icon: Home, to: "/dashboard" },
-            { label: "Transactions", icon: CreditCard, to: "/transactions" },
-            { label: "Goals", icon: Target, to: "/goals" },
-            { label: "Social", icon: Users, to: "/social" },
-            { label: "Profile", icon: User, to: "/profile" },
-          ].map(({ label, icon: Icon, to }) => (
-            <Link
-              key={label}
-              to={to}
-              className="flex flex-col items-center justify-center py-3 transition hover:text-[#06d6a0] text-gray-500 dark:text-gray-400 active:scale-95"
-            >
-              <Icon className="w-5 h-5 mb-0.5" />
-              <span>{label}</span>
-            </Link>
-          ))}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-50 pb-safe">
+        <div className="flex justify-around items-center px-2">
+          {NAV_LINKS.slice(0, 5).map((link) => {
+            const isActive = link.path === '/users'; // Highlight Users tab
+            return (
+              <Link key={link.name} to={link.path} className={`flex flex-col items-center justify-center py-3 px-2 transition active:scale-95 ${isActive ? "text-[#06D6A0]" : "text-gray-500 hover:text-[#06D6A0]"}`}>
+                <link.icon className="w-6 h-6 mb-1" />
+                <span className="text-[10px] font-bold truncate max-w-[60px] text-center">{link.name}</span>
+              </Link>
+            );
+          })}
         </div>
       </nav>
 

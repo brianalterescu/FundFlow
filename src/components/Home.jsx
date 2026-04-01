@@ -10,6 +10,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Lock,
+  PieChart,
   Zap,
   Smartphone
 } from "lucide-react";
