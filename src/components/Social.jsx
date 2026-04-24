@@ -310,9 +310,9 @@ export default function Social() {
     { name: "Connections", path: "/connections", icon: LinkIcon },
     { name: "Users", path: "/users", icon: Users },
     { name: "Social Feed", path: "/social", icon: MessageSquare },
-    { name: "CSV Uploading", path: "/csvuploading", icon: Activity },
+    { name: "CSV Uploading", path: "/csv", icon: Activity },
     { name: "Profile", path: "/profile", icon: User },
-    { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+      // { name: "Wrapped", path: "/wrapped", icon: Sparkles },
   ];
 
   if (loading) {

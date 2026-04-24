@@ -70,7 +70,7 @@ export default function EditPicture() {
         { name: "Social Feed", path: "/social", icon: MessageSquare },
         { name: "CSV Uploading", path: "/csv", icon: Activity },
         { name: "Profile", path: "/profile", icon: User },
-        { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+          // { name: "Wrapped", path: "/wrapped", icon: Sparkles },
     ];
 
   if (loading) {

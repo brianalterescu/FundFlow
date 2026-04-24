@@ -176,10 +176,10 @@ function Profile() {
     { name: "Connections", path: "/connections", icon: LinkIcon },
     { name: "Users", path: "/users", icon: Users },
     { name: "Social Feed", path: "/social", icon: MessageSquare },
-    { name: "CSV Uploading", path: "/csvuploading", icon: Activity },
+    { name: "CSV Uploading", path: "/csv", icon: Activity },
     { name: "Profile", path: "/profile", icon: User },
-    { name: "Income Forecast", path: "/forecast", icon: TrendingUp },
-    { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+    { name: "Income Forecast", path: "/incomeforecast", icon: TrendingUp },
+      // { name: "Wrapped", path: "/wrapped", icon: Sparkles },
   ];
 
   if (loading) {

@@ -211,13 +211,31 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleDeleteTransaction = async (id) => {
+  const handleDeleteTransaction = async (id, e) => {
+    // 1. Stop the click from triggering anything else on the table row
+    if (e) e.stopPropagation();
+
+    // 2. Safety check: ensure the ID actually exists
+    if (!id) {
+      console.error("Missing transaction ID!");
+      return alert("Error: Cannot delete this transaction because its ID is missing.");
+    }
+
     if (!window.confirm("Delete this transaction?")) return;
+
     try {
+      // 3. Delete from Firebase
       await deleteDoc(doc(db, "transactions", id));
+
+      // 4. Remove from the UI immediately
       setTransactions(prev => prev.filter(t => t.id !== id));
+
+      // 5. IMPORTANT: Bust the cache so it doesn't reappear on reload!
+      sessionStorage.removeItem("fundflow_transactions_cache");
+
     } catch (error) {
       console.error("Error deleting transaction:", error);
+      alert("Failed to delete transaction. Check console for details.");
     }
   };
 
@@ -346,8 +364,8 @@ export default function TransactionsPage() {
     { name: "Social Feed", path: "/social", icon: MessageSquare },
     { name: "CSV Uploading", path: "/csv", icon: Activity },
     { name: "Profile", path: "/profile", icon: User },
-    { name: "Income Forecast", path: "/forecast", icon: TrendingUp },
-    { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+    { name: "Income Forecast", path: "/incomeforecast", icon: TrendingUp },
+    //   // { name: "Wrapped", path: "/wrapped", icon: Sparkles },
   ];
 
   // --- RENDERS ---
@@ -672,9 +690,23 @@ export default function TransactionsPage() {
 
                               <td className="px-6 py-4 align-top pt-5 text-center">
                                 <div className="flex items-center justify-center gap-2">
-                                  {/* Replaced blue hover states with #06D6A0 */}
-                                  <button onClick={() => startEdit(t)} className="p-2 text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:text-[#06D6A0] hover:bg-[#06D6A0]/10 dark:hover:bg-[#06D6A0]/20 rounded-lg transition"><Edit2 size={16} /></button>
-                                  <button onClick={() => handleDeleteTransaction(t.id)} className="p-2 text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"><Trash2 size={16} /></button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Double protection for the edit button
+                                      startEdit(t);
+                                    }}
+                                    className="p-2 text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:text-[#06D6A0] hover:bg-[#06D6A0]/10 dark:hover:bg-[#06D6A0]/20 rounded-lg transition"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+
+                                  {/* UPDATED: Passing the event 'e' into our new function */}
+                                  <button
+                                    onClick={(e) => handleDeleteTransaction(t.id, e)}
+                                    className="p-2 text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>

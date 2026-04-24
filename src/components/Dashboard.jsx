@@ -10,17 +10,17 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell // Aliased to avoid conflict with Lucide
 } from "recharts";
-import { 
+import {
   ArrowUpRight, ArrowDownRight, Wallet, CreditCard, RefreshCw, Activity,
-  Bell, Home, Target, Users, User, LogOut, Calendar, ChevronDown, 
+  Bell, Home, Target, Users, User, LogOut, Calendar, ChevronDown,
   PieChart as PieIcon, // Aliased for Nav bar
   Link as LinkIcon, Sparkles, TrendingUp, MessageSquare, ArrowRight, ShoppingBag, PlusCircle,
   Eye, EyeOff, ShieldAlert, Bot
 } from "lucide-react";
 
 const CACHE_KEY = "fundflow_transactions_cache";
-const CACHE_TTL = 1000 * 60 * 5; 
-
+const CACHE_TTL = 1000 * 60 * 5;
+  // const [loading, setLoading] = useState(true); 
 // --- AI INSIGHT COMPONENT ---
 const generateInsight = (monthName, income, spent, savingsRate) => {
   if (income === 0 && spent === 0) {
@@ -28,14 +28,14 @@ const generateInsight = (monthName, income, spent, savingsRate) => {
   }
   if (spent > income) {
     const deficit = spent - income;
-    return `You ran a deficit of $${deficit.toLocaleString(undefined, {minimumFractionDigits: 2})} in ${monthName}. Your spending exceeded your income. Let's review the 'Top Expenses' chart below to see where we can trim the fat for next month.`;
+    return `You ran a deficit of $${deficit.toLocaleString(undefined, { minimumFractionDigits: 2 })} in ${monthName}. Your spending exceeded your income. Let's review the 'Top Expenses' chart below to see where we can trim the fat for next month.`;
   }
   if (savingsRate >= 20) {
     return `Incredible financial discipline! You saved ${savingsRate.toFixed(1)}% of your income in ${monthName}. You are well above the recommended 20% benchmark. Consider sweeping that excess cash into a high-yield savings account or investment portfolio.`;
   }
   if (savingsRate > 0 && savingsRate < 20) {
     const saved = income - spent;
-    return `Solid month! You kept your expenses under your income, saving $${saved.toLocaleString(undefined, {minimumFractionDigits: 2})} in ${monthName}. To hit the optimal 20% savings rate, see if we can optimize your largest spending category below.`;
+    return `Solid month! You kept your expenses under your income, saving $${saved.toLocaleString(undefined, { minimumFractionDigits: 2 })} in ${monthName}. To hit the optimal 20% savings rate, see if we can optimize your largest spending category below.`;
   }
   return `Your cash flow for ${monthName} is perfectly balanced. You spent exactly what you earned.`;
 };
@@ -99,21 +99,21 @@ const AIInsightWidget = ({ data, selectedMonth, selectedYear, privacyMode }) => 
 };
 
 export default function Dashboard() {
-  const { transactions: contextTransactions, user } = useContext(TransactionContext);
+  // We rename 'transactions' to 'allTransactions' so it perfectly matches the rest of your existing Dashboard code!
+  const { user, transactions: allTransactions, refreshTransactions, isGlobalLoading } = useContext(TransactionContext);
   const { notifications, loading: notificationsLoading, unreadCount } = useNotificationContext();
   const location = useLocation();
   const navigate = useNavigate();
+  // const [loading, setLoading] = useState(true);
   
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [allTransactions, setAllTransactions] = useState([]);
+  // These were the ones we modified in the previous step
   const [userData, setUserData] = useState(null); 
   const [privacyMode, setPrivacyMode] = useState(false);
-  const [isIdleSignedOut, setIsIdleSignedOut] = useState(false);
-  
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); 
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showNotifications, setShowNotifications] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // Add this back if you use it for the button
+  const [isIdleSignedOut, setIsIdleSignedOut] = useState(false);
 
   // --- IDLE TIMEOUT LOGIC ---
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function Dashboard() {
       timeout = setTimeout(() => {
         setIsIdleSignedOut(true);
         signOut(auth).catch(err => console.error(err));
-      }, 600000); 
+      }, 600000);
     };
     const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
     events.forEach(event => window.addEventListener(event, handleActivity));
@@ -137,7 +137,7 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      sessionStorage.removeItem(CACHE_KEY); 
+      sessionStorage.removeItem(CACHE_KEY);
       navigate("/login");
     } catch (error) { console.error("Error signing out: ", error); }
   };
@@ -162,39 +162,38 @@ export default function Dashboard() {
       if (docSnap.exists()) setUserData(docSnap.data());
     } catch (err) { console.error("Error fetching user profile:", err); }
   };
-
-  const fetchTransactions = async (forceRefresh = false) => {
-    if (!user) return;
-    try {
-      if (forceRefresh) setRefreshing(true);
-      if (!forceRefresh) {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_TTL && data.length > 0) {
-            setAllTransactions(data);
-            setLoading(false);
-            return;
-          }
-        }
-      }
-      const q = query(collection(db, "transactions"), where("userid", "==", user.uid));
-      const snap = await getDocs(q);
-      const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: rawData, timestamp: Date.now() }));
-      setAllTransactions(rawData);
-    } catch (err) {
-      console.error("Dashboard transaction fetch error:", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  // OLD LOGIC - TODO Delete when ready
+  // const fetchTransactions = async (forceRefresh = false) => {
+  //   if (!user) return;
+  //   try {
+  //     if (forceRefresh) setRefreshing(true);
+  //     if (!forceRefresh) {
+  //       const cached = sessionStorage.getItem(CACHE_KEY);
+  //       if (cached) {
+  //         const { data, timestamp } = JSON.parse(cached);
+  //         if (Date.now() - timestamp < CACHE_TTL && data.length > 0) {
+  //           setAllTransactions(data);
+  //           setLoading(false);
+  //           return;
+  //         }
+  //       }
+  //     }
+  //     const q = query(collection(db, "transactions"), where("userid", "==", user.uid));
+  //     const snap = await getDocs(q);
+  //     const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  //     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: rawData, timestamp: Date.now() }));
+  //     setAllTransactions(rawData);
+  //   } catch (err) {
+  //     console.error("Dashboard transaction fetch error:", err);
+  //   } finally {
+  //     setLoading(false);
+  //     setRefreshing(false);
+  //   }
+  // };
 
   useEffect(() => {
     fetchUserData();
-    fetchTransactions();
-  }, [user, contextTransactions]);
+  }, [user]);
 
   const handleSeedDatabase = async () => {
     if (!user) return;
@@ -207,7 +206,7 @@ export default function Dashboard() {
         { userid: user.uid, "transaction amount": -45, Category: "Food", Description: "Chipotle", TransactionDate: Timestamp.fromDate(today) }
       ];
       for (const tx of testData) { await addDoc(collection(db, "transactions"), tx); }
-      await fetchTransactions(true);
+      await refreshTransactions();
     } catch (error) { console.error("Error seeding DB:", error); } finally { setRefreshing(false); }
   };
 
@@ -258,7 +257,7 @@ export default function Dashboard() {
     });
 
     const netBalance = monthIncome - monthSpent;
-    let runningMonthBalance = 0; 
+    let runningMonthBalance = 0;
     const chartData = Object.values(dailyDataMap).map(day => {
       runningMonthBalance += (day.income - day.spent);
       return { date: `${selectedMonth + 1}/${day.day}`, balance: runningMonthBalance, spent: day.spent };
@@ -313,10 +312,10 @@ export default function Dashboard() {
     { name: "Connections", path: "/connections", icon: LinkIcon },
     { name: "Users", path: "/users", icon: Users },
     { name: "Social Feed", path: "/social", icon: MessageSquare },
-    { name: "CSV Uploading", path: "/csvuploading", icon: Activity },
+    { name: "CSV Uploading", path: "/csv", icon: Activity },
     { name: "Profile", path: "/profile", icon: User },
-    { name: "Income Forecast", path: "/forecast", icon: TrendingUp },
-    { name: "Wrapped", path: "/wrapped", icon: Sparkles },
+    { name: "Income Forecast", path: "/incomeforecast", icon: TrendingUp },
+    // { name: "Wrapped", path: "/wrapped", icon: Sparkles },
   ];
 
   if (isIdleSignedOut) {
@@ -332,7 +331,7 @@ export default function Dashboard() {
     );
   }
 
-  if (loading) {
+if (isGlobalLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0b0f19]">
         <div className="w-8 h-8 border-4 border-[#06D6A0] border-t-transparent rounded-full animate-spin"></div>
@@ -342,6 +341,15 @@ export default function Dashboard() {
 
   const displayName = userData?.name || user?.displayName || "User";
   const avatarUrl = userData?.picURL || user?.photoURL || "https://i.imgur.com/1xAP7pJ.png";
+
+  // --- 🛡️ CACHE VERIFICATION TRACKER ---
+  useEffect(() => {
+    if (!isGlobalLoading && allTransactions) {
+      console.log(`📊 DASHBOARD MOUNTED: Rendering ${allTransactions.length} transactions.`);
+      console.log(`✅ ADDITIONAL READS COST: 0 (Loaded instantly from Global Context)`);
+    }
+  }, [allTransactions, isGlobalLoading]);
+  // -------------------------------------
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#0b0f19] text-gray-900 dark:text-white font-['Lexend_Deca'] overflow-hidden">
@@ -392,7 +400,7 @@ export default function Dashboard() {
             <button onClick={() => setPrivacyMode(!privacyMode)} className={`p-2 rounded-full transition-colors ${privacyMode ? "bg-[#06D6A0]/10 text-[#06D6A0]" : "text-gray-500 hover:text-[#06D6A0] hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Toggle Privacy Mode">
               {privacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
-            <button onClick={() => fetchTransactions(true)} className="p-2 text-gray-500 hover:text-[#06D6A0] transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+            <button onClick={async () => { setRefreshing(true); await refreshTransactions(); setRefreshing(false); }} className="p-2 text-gray-500 hover:text-[#06D6A0] transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
               <RefreshCw size={20} className={refreshing ? "animate-spin text-[#06D6A0]" : ""} />
             </button>
             <div className="relative">
@@ -468,7 +476,7 @@ export default function Dashboard() {
                   <div style={{ width: '100%', height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={processedData.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs><linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06D6A0" stopOpacity={0.3}/><stop offset="95%" stopColor="#06D6A0" stopOpacity={0}/></linearGradient></defs>
+                        <defs><linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06D6A0" stopOpacity={0.3} /><stop offset="95%" stopColor="#06D6A0" stopOpacity={0} /></linearGradient></defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
                         <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} minTickGap={30} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(val) => privacyMode ? "***" : `$${val}`} />
