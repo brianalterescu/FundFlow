@@ -16,18 +16,17 @@ import {
 // Icons
 import {
   Target, Coffee, Gift, Pill, Home as HomeIcon, Truck, User, Dog, Zap, Airplay,
-  CreditCard, Repeat, Gamepad, Users, Volleyball, Briefcase, GraduationCap,
-  BarChart2, DollarSign, FileText, Film, Box, Trash2, Edit2, X,
+  CreditCard, Repeat , Gamepad, Users, Volleyball, Briefcase, GraduationCap,
+  BarChart2, DollarSign, FileText, Film, Box, Trash2, Edit2, X, Rose,
   LogOut, Bell, Eye, EyeOff, ShieldAlert, Activity, Sparkles, TrendingUp, MessageSquare, PlusCircle, ArrowUpRight, ArrowDownRight, Link as LinkIcon, PieChart as PieIcon,
 } from "lucide-react";
 
 import LoadingScreen from "./LoadingScreen";
-
 const categories = [
   { name: "Food", icon: Coffee }, { name: "Gifts", icon: Gift }, { name: "Health/Medical", icon: Pill },
   { name: "Home", icon: HomeIcon }, { name: "Transportation", icon: Truck }, { name: "Personal", icon: User },
-  { name: "Pets", icon: Dog }, { name: "Utilities", icon: Zap }, { name: "Travel", icon: Airplay },
-  { name: "Debt", icon: CreditCard }, { name: "Subscriptions", icon: Repeat }, { name: "Fun", icon: Gamepad },
+  { name: "Pets", icon: Dog }, { name: "Utilities", icon: Zap }, { name: "Dating", icon: Rose },
+  { name: "Debt", icon: CreditCard }, { name: "Subscriptions", icon: Repeat }, { name: "Fun", icon: Gamepad }, { name: "Travel", icon: Airplay },
   { name: "Social", icon: Users }, { name: "Recreational", icon: Volleyball }, { name: "Work", icon: Briefcase },
   { name: "Education", icon: GraduationCap }, { name: "Investments", icon: BarChart2 }, { name: "Savings", icon: DollarSign },
   { name: "Taxes", icon: FileText }, { name: "Entertainment", icon: Film }, { name: "Other", icon: Box },
